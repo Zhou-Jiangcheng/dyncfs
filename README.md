@@ -13,12 +13,12 @@ Wang, R., Heimann, S., Zhang, Y., Wang, H., & Dahm, T. (2017). Complete syntheti
 
 # Installation
 
-1. Install the requirments. (Miniforge/Anaconda on Debian 12, Windows 10/11)
+1. Install the requirments. (Miniforge/Anaconda on Debian 12，conda 24.11.3)
 
 ```
 conda create -n cfs python=3.11
 conda activate cfs
-conda install "openjdk<24" jpype1 gfortran numpy scipy pandas matplotlib tqdm -c conda-forge
+conda install openjdk jpype1 gfortran numpy scipy pandas matplotlib tqdm -c conda-forge
 ```
 Optional (Linux server)
 ```

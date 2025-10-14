@@ -575,8 +575,6 @@ def compute_static_cfs_fix_depth(
             path_green=config.path_green_staic, check_finished=config.check_finished
         )
 
-    path_output_results = config.path_output_results_static
-
     Nx = int(np.ceil((obs_lat_range[1] - obs_lat_range[0]) / obs_delta_lat) + 1)
     Ny = int(np.ceil((obs_lon_range[1] - obs_lon_range[0]) / obs_delta_lon) + 1)
 
@@ -623,7 +621,7 @@ def compute_static_cfs_fix_depth(
     )
     np.save(path_stress_tensor, stress_tensor_array)
 
-    if optimal_type == 0:
+    if config.optimal_type == 0:
         n_array = np.zeros((N, 3))
         d_array = np.zeros((N, 3))
         norm_stress_array = np.zeros(N)
