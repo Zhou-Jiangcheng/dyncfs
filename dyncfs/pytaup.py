@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 import jpype.imports  # use jpype to call java class
-os.environ.setdefault("JAVA_TOOL_OPTIONS", "--enable-native-access=ALL-UNNAMED")
+
 jar_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "exec",
@@ -10,9 +10,11 @@ jar_path = os.path.join(
 )
 if not jpype.isJVMStarted():
     try:
-        jpype.startJVM(jpype.getDefaultJVMPath(),
-                   "-ea",
-                   "--enable-native-access=ALL-UNNAMED")
+        jpype.startJVM(
+            "-ea",
+            "--enable-native-access=ALL-UNNAMED",
+            classpath=[jar_path],
+        )
     except:
         pass
 from edu.sc.seis.TauP import TauP_Time  # type: ignore
