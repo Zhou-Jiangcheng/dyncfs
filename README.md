@@ -13,17 +13,20 @@ Wang, R., Heimann, S., Zhang, Y., Wang, H., & Dahm, T. (2017). Complete syntheti
 
 # Installation
 
-1. Install the requirments. (Miniforge/Anaconda on Debian 12，conda 24.11.3)
+1. Install the requirments. (Debian 12, conda 24.11.3)
 
 ```
 conda create -n cfs python=3.11
 conda activate cfs
 conda install openjdk jpype1 gfortran numpy scipy pandas matplotlib tqdm -c conda-forge
 ```
-Optional (Linux server)
+
+Optional
+
 ```
 conda install geographiclib mpi4py -c conda-forge
 ```
+
 2. Download the reposity and install by pip.
 
 ```
@@ -31,17 +34,23 @@ git clone https://github.com/Zhou-Jiangcheng/dyncfs.git
 cd dyncfs
 pip install .
 ```
+
 For code modification and debugging, use editable mode:
+
 ```
 pip install -e .
 ```
 
 # Usage
+
 Fill in all parameters in the .ini file, and prepare the input files as described in `example.ini`, including `source_plane[m].csv` and `obs_plane[n].csv` under the input directory, as well as `model.nd` representing the Earth model.
+
 1. Command-line usage
+
 ```
 dyncfs --help
 ```
+
 ```
 usage: dyncfs [-h] --config CONFIG [--create-static-lib] [--compute-static-cfs] [--compute-static-cfs-fix-depth] [--run-static] [--create-dynamic-lib] [--compute-dynamic-cfs] [--compute-dynamic-cfs-fix-depth] [--run-dynamic] [--run-all]
 
@@ -65,6 +74,7 @@ options:
 ```
 
 2. Import and use classes and functions in .py files
+
 ```
 from dyncfs.cfs_static import *
 
@@ -74,6 +84,7 @@ if __name__ == "__main__":
     create_static_lib(config)
     compute_static_cfs_parallel(config)
 ```
+
 ```
 from dyncfs.cfs_dynamic import *
 
