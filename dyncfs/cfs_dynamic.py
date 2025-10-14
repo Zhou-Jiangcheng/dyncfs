@@ -111,12 +111,12 @@ def create_dynamic_lib(config: CfsConfig):
             path_nd=config.path_nd,
             earth_model_layer_num=config.earth_model_layer_num,
         )
-        # create_grnlib_qseis2025_parallel(
-        #     path_green=config.path_green_dynamic,
-        #     check_finished=config.check_finished,
-        #     convert_pd2bin=True,
-        #     remove_pd=True,
-        # )
+        create_grnlib_qseis2025_parallel(
+            path_green=config.path_green_dynamic,
+            check_finished=config.check_finished,
+            convert_pd2bin=True,
+            remove_pd=True,
+        )
     e = datetime.datetime.now()
     print("run time:", e - s)
 
