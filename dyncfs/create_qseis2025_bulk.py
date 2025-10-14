@@ -6,7 +6,6 @@ import json
 import datetime
 from multiprocessing import Pool
 
-import jpype
 from tqdm import tqdm
 
 from .create_qseis2025 import (
@@ -18,7 +17,6 @@ from .create_qseis2025 import (
 from .utils import group, convert_earth_model_nd2nd_without_Q
 
 
-# 新增：imap_unordered 的打包调用助手
 def _call_qseis2025_star(args):
     return call_qseis2025(*args)
 
@@ -179,13 +177,11 @@ def create_grnlib_qseis2025_parallel(
 ):
     with open(os.path.join(path_green, "group_list.pkl"), "rb") as fr:
         group_list = pickle.load(fr)
-    # 展平任务
     tasks = []
     for grp in group_list:
         for item in grp:
             tasks.append(tuple(item + [path_green, check_finished]))
 
-    # 读取进程数（可选）
     processes = None
     try:
         with open(os.path.join(path_green, "green_lib_info.json"), "r") as fr:
@@ -197,7 +193,7 @@ def create_grnlib_qseis2025_parallel(
         for _ in tqdm(
                 pool.imap_unordered(_call_qseis2025_star, tasks, chunksize=1),
                 total=len(tasks),
-                desc="Computing dynamic stress",
+                desc="Compute the Green\'s function library in the time domain.",
         ):
             pass
 
