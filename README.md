@@ -18,7 +18,7 @@ Wang, R., Heimann, S., Zhang, Y., Wang, H., & Dahm, T. (2017). Complete syntheti
 ```
 conda create -n cfs python=3.11
 conda activate cfs
-conda install "openjdk<24" jpype1 gfortran "numpy>2.3.3" scipy pandas matplotlib tqdm -c conda-forge
+conda install "openjdk<24" jpype1 gfortran numpy scipy pandas matplotlib tqdm -c conda-forge
 ```
 Optional (Linux server)
 ```

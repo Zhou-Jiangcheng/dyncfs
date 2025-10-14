@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from matplotlib.colors import Normalize
+from matplotlib.colors import Normalize, LinearSegmentedColormap
 
 plt.rcParams.update(
     {
@@ -68,7 +68,9 @@ def plot_slip_2d(
     sub_length_strike_km = sub_length_strike_km / zoom_strike
     sub_length_dip_km = sub_length_dip_km / zoom_dip
 
-    cmap = matplotlib.colormaps["seismic"]
+    # cmap = matplotlib.colormaps["seismic"]
+    colors_slip = ["blue", "cyan", "orange", "red"]
+    cmap = LinearSegmentedColormap.from_list("custom_cmap", colors_slip)
     norm = Normalize(vmin=tick_range[0], vmax=tick_range[1])
 
     ratio = source_shape[1] / source_shape[0]
@@ -226,9 +228,12 @@ def plot_slip_2d_series(
                 weight="bold",
             )
     cax = fig.add_axes((0.925, 0.2, 0.025, 0.6))
-    cmap = cm.get_cmap("seismic")
+
+    colors_slip = ["blue", "cyan", "orange", "red"]
+    cmap = LinearSegmentedColormap.from_list("custom_cmap", colors_slip)
     m = cm.ScalarMappable(cmap=cmap)
     m.set_clim(vmin, vmax)
+
     cbar = fig.colorbar(m, cax=cax)
     cbar.set_label("Slip (m)")
     fig.suptitle(title)
