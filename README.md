@@ -25,7 +25,7 @@ conda install geographiclib mpi4py -c conda-forge # optional
 or install the requirments using system package manager, such as apt (Debian 12)
 
 ```
-sudo apt install openjdk gfortran
+sudo apt install openjdk-17-jdk gfortran
 sudo apt install openmpi-common # optional
 ```
 
