@@ -17,7 +17,7 @@ if __name__ == "__main__":
     config.read_config("wenchuan.ini")
     config.processes_num = 4
 
-    config.static_dist_range = [0, 400]
+    config.static_dist_range = [0, 800]
     create_static_lib(config)
 
     nt_list = [_ for _ in range(0, 80, 2)]
