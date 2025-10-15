@@ -13,21 +13,23 @@ Wang, R., Heimann, S., Zhang, Y., Wang, H., & Dahm, T. (2017). Complete syntheti
 
 # Installation
 
-1. Install the requirments. (Debian 12, conda 24.11.3)
+1. Install the requirments by conda (conda 24.11.3)
 
 ```
 conda create -n cfs python=3.11
 conda activate cfs
 conda install openjdk jpype1 gfortran numpy scipy pandas matplotlib tqdm -c conda-forge
+conda install geographiclib mpi4py -c conda-forge # optional
 ```
 
-Optional
+or install the requirments using system package manager, such as apt (Debian 12)
 
 ```
-conda install geographiclib mpi4py -c conda-forge
+sudo apt install openjdk gfortran
+sudo apt install openmpi-common # optional
 ```
 
-2. Download the reposity and install by pip.
+2. Download this reposity and install by pip.
 
 ```
 git clone https://github.com/Zhou-Jiangcheng/dyncfs.git
@@ -39,6 +41,12 @@ For code modification and debugging, use editable mode:
 
 ```
 pip install -e .
+```
+
+or install from pypi
+
+```
+pip install dyncfs
 ```
 
 # Usage

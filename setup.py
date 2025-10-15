@@ -7,11 +7,11 @@ from setuptools.command.build_py import build_py as _build_py
 
 project_root = os.path.dirname(os.path.abspath(__file__))
 
-req_file = os.path.join(project_root, "requirements.txt")
-with open(req_file, encoding="utf-8") as f:
-    requirements = [
-        line.strip() for line in f if line.strip() and not line.startswith("#")
-    ]
+# req_file = os.path.join(project_root, "requirements.txt")
+# with open(req_file, encoding="utf-8") as f:
+#     requirements = [
+#         line.strip() for line in f if line.strip() and not line.startswith("#")
+#     ]
 
 platform_exec = "exe" if platform.system() == "Windows" else "bin"
 
@@ -70,7 +70,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,  # 配合 package_data/MANIFEST.in
     package_data={"dyncfs": ["exec/*"]},
-    install_requires=requirements,
+    # install_requires=requirements,
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

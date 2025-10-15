@@ -1,0 +1,5 @@
+include README.md
+include LICENSE
+recursive-include fortran_src_codes *.f, *.h
+recursive-include dyncfs/exec *.jar
+recursive-include dyncfs *.py
