@@ -1,4 +1,5 @@
 import os
+import glob
 import platform
 import shutil
 import subprocess
@@ -14,6 +15,59 @@ project_root = os.path.dirname(os.path.abspath(__file__))
 #     ]
 
 platform_exec = "exe" if platform.system() == "Windows" else "bin"
+
+
+def _compile_dir(src_dir: str, out_bin: str, extra_flags: list[str]) -> None:
+    build_dir = os.path.join(src_dir, "_build_mod")
+    os.makedirs(build_dir, exist_ok=True)
+
+    pats = ["*.f", "*.for", "*.f90", "*.F", "*.F90"]
+    files = []
+    for p in pats:
+        files.extend(glob.glob(os.path.join(src_dir, p)))
+    if not files:
+        raise RuntimeError(f"[dyncfs] No Fortran sources in {src_dir}")
+
+    remaining = sorted(files)
+    compiled_objs = []
+    last_err = ""
+    for _ in range(10):
+        progressed = False
+        for f in list(remaining):
+            obj = os.path.join(build_dir, os.path.basename(f) + ".o")
+            cmd = [
+                "gfortran",
+                "-c",
+                "-O3",
+                "-J",
+                build_dir,
+                "-I",
+                build_dir,
+                "-I",
+                src_dir,
+                *extra_flags,
+                f,
+                "-o",
+                obj,
+            ]
+            proc = subprocess.run(cmd, cwd=src_dir, text=True, capture_output=True)
+            if proc.returncode == 0:
+                remaining.remove(f)
+                compiled_objs.append(obj)
+                progressed = True
+            else:
+                last_err = proc.stderr or proc.stdout
+        if not remaining:
+            break
+        if not progressed:
+            raise RuntimeError(
+                "[dyncfs] Fortran compile stalled.\n"
+                f"Uncompiled: {[os.path.basename(x) for x in remaining]}\n"
+                f"Last error:\n{last_err}"
+            )
+
+    link_cmd = ["gfortran", *compiled_objs, "-o", out_bin]
+    subprocess.run(link_cmd, cwd=src_dir, check=True)
 
 
 class CustomBuildPy(_build_py):
@@ -42,41 +96,19 @@ class CustomBuildPy(_build_py):
             "qseis2025_src": f"qseis2025.{platform_exec}",
         }
 
-        fortran_flags = "-O3"
         for src_folder, bin_name in fortran_subdirs.items():
             fortran_src_dir = os.path.join(fortran_src_root, src_folder)
             output_binary = os.path.join(exec_dir, bin_name)
-            extra = ""
+
+            extra = []
+            env_fflags = os.environ.get("DYNCFS_FFLAGS", "")
+            if env_fflags:
+                extra += env_fflags.split()
             if src_folder == "qseis2025_src":
-                extra = " -ffixed-line-length-none"
-            compile_command = f'gfortran "{fortran_src_dir}"/*.f {fortran_flags}{extra} -o "{output_binary}"'
+                extra += ["-ffixed-line-length-none"]
+
             print(f"[dyncfs] Compiling {src_folder} -> {output_binary}")
-            result = subprocess.run(compile_command, shell=True)
-            if result.returncode != 0:
-                raise RuntimeError(f"Fortran compilation failed for {src_folder}")
+            _compile_dir(fortran_src_dir, output_binary, extra)
 
 
-setup(
-    name="dyncfs",
-    version="1.0.0",
-    author="Zhou Jiangcheng",
-    author_email="zhoujcpku@outlook.com",
-    description="A Python library for computing Coulomb Failure Stress Change.",
-    long_description=open(
-        os.path.join(project_root, "README.md"), encoding="utf-8"
-    ).read(),
-    long_description_content_type="text/markdown",
-    url="https://github.com/Zhou-Jiangcheng/dyncfs",
-    packages=find_packages(),
-    include_package_data=True,  # 配合 package_data/MANIFEST.in
-    package_data={"dyncfs": ["exec/*"]},
-    # install_requires=requirements,
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-    ],
-    python_requires=">=3.11",
-    entry_points={"console_scripts": ["dyncfs=dyncfs.main:main"]},
-    cmdclass={"build_py": CustomBuildPy},  # type: ignore
-)
+setup(cmdclass={"build_py": CustomBuildPy})
