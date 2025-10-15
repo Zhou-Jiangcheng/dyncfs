@@ -1,6 +1,6 @@
 # Introduction
 
-This Python package serves as the frontend for calculating and building a Green's function library for synthetic seismograms and then compute the static/dynamic Coulomb Failure Change. The backend consists of Wang Rongjiang's program for calculating synthetic seismograms, including EDGRN/EDCMP, [QSEIS_2006_STRESS](https://github.com/Zhou-Jiangcheng/QSEIS_2006_STRESS) and QSSP.  Traveling time is calculated using [TAUP](https://github.com/crotwell/TauP). Some geographic coordinate transformations use code from [obspy](https://github.com/obspy/obspy).
+This Python package serves as the frontend for calculating and building a Green's function library for synthetic seismograms and then compute the static/dynamic Coulomb Failure Stress Change. The backend consists of Wang Rongjiang's program for calculating synthetic seismograms, including EDGRN/EDCMP, [QSEIS_2006_STRESS](https://github.com/Zhou-Jiangcheng/QSEIS_2006_STRESS) and QSSP.  Traveling time is calculated using [TAUP](https://github.com/crotwell/TauP). Some geographic coordinate transformations use code from [obspy](https://github.com/obspy/obspy).
 
 References:
 Wang, R. (1999). A simple orthonormalization method for stable and efficient computation of Green’s functions.  *Bulletin of the Seismological Society of America* ,  *89* (3), 733–741. [https://doi.org/10.1785/BSSA0890030733](https://doi.org/10.1785/BSSA0890030733)
