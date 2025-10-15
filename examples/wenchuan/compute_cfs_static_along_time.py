@@ -18,8 +18,8 @@ if __name__ == "__main__":
     config.processes_num = 4
 
     config.optimal_type = 0
-    config.source_inds = [1, 2, 3, 4]
-    config.source_shapes = [[22, 9], [6, 9], [8, 9], [62, 9]]
+    config.source_inds = [4]
+    config.source_shapes = [[62, 9]]
     config.obs_inds = [5]
     config.obs_shapes = [[17, 6]]
     config.slip_thresh = 1
