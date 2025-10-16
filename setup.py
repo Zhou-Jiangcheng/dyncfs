@@ -4,9 +4,17 @@ import shutil
 import subprocess
 from setuptools import setup
 from setuptools.command.build_py import build_py as _build_py
+from setuptools import setup, Distribution
+
 
 project_root = os.path.dirname(os.path.abspath(__file__))
 platform_exec = "exe" if platform.system() == "Windows" else "bin"
+
+
+class BinaryDistribution(Distribution):
+    def has_ext_modules(self):
+        return True
+
 
 def _compile_dir(src_dir: str, out_bin: str, extra_flags: list[str]) -> None:
     cmd = "gfortran ./*.f -O3 %s -o %s" % (
@@ -64,4 +72,4 @@ class CustomBuildPy(_build_py):
             _compile_dir(fortran_src_dir, output_binary, extra)
 
 
-setup(cmdclass={"build_py": CustomBuildPy})  # type:ignore
+setup(cmdclass={"build_py": CustomBuildPy}, distclass=BinaryDistribution)  # type:ignore

@@ -34,5 +34,7 @@ where = ["."]
 include = ["dyncfs*"]
 
 [tool.setuptools.package-data]
-dyncfs = ["exec/*"]
+dyncfs = ["exec/*.jar"]
 
+[tool.setuptools.exclude-package-data]
+dyncfs = ["exec/*.bin", "exec/*.exe", "exec/*.o", "exec/*.out"]
