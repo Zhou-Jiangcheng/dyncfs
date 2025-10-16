@@ -1,73 +1,26 @@
 import os
-import glob
 import platform
 import shutil
 import subprocess
-from setuptools import setup, find_packages
+from setuptools import setup
 from setuptools.command.build_py import build_py as _build_py
 
 project_root = os.path.dirname(os.path.abspath(__file__))
-
-# req_file = os.path.join(project_root, "requirements.txt")
-# with open(req_file, encoding="utf-8") as f:
-#     requirements = [
-#         line.strip() for line in f if line.strip() and not line.startswith("#")
-#     ]
-
 platform_exec = "exe" if platform.system() == "Windows" else "bin"
 
-
 def _compile_dir(src_dir: str, out_bin: str, extra_flags: list[str]) -> None:
-    build_dir = os.path.join(src_dir, "_build_mod")
-    os.makedirs(build_dir, exist_ok=True)
-
-    pats = ["*.f", "*.for", "*.f90", "*.F", "*.F90"]
-    files = []
-    for p in pats:
-        files.extend(glob.glob(os.path.join(src_dir, p)))
-    if not files:
-        raise RuntimeError(f"[dyncfs] No Fortran sources in {src_dir}")
-
-    remaining = sorted(files)
-    compiled_objs = []
-    last_err = ""
-    for _ in range(10):
-        progressed = False
-        for f in list(remaining):
-            obj = os.path.join(build_dir, os.path.basename(f) + ".o")
-            cmd = [
-                "gfortran",
-                "-c",
-                "-O3",
-                "-J",
-                build_dir,
-                "-I",
-                build_dir,
-                "-I",
-                src_dir,
-                *extra_flags,
-                f,
-                "-o",
-                obj,
-            ]
-            proc = subprocess.run(cmd, cwd=src_dir, text=True, capture_output=True)
-            if proc.returncode == 0:
-                remaining.remove(f)
-                compiled_objs.append(obj)
-                progressed = True
-            else:
-                last_err = proc.stderr or proc.stdout
-        if not remaining:
-            break
-        if not progressed:
-            raise RuntimeError(
-                "[dyncfs] Fortran compile stalled.\n"
-                f"Uncompiled: {[os.path.basename(x) for x in remaining]}\n"
-                f"Last error:\n{last_err}"
-            )
-
-    link_cmd = ["gfortran", *compiled_objs, "-o", out_bin]
-    subprocess.run(link_cmd, cwd=src_dir, check=True)
+    cmd = "gfortran ./*.f -O3 %s -o %s" % (
+        " ".join("%s" % extra_flags[_] for _ in range(len(extra_flags))),
+        out_bin,
+    )
+    print(src_dir)
+    print(cmd)
+    proc = subprocess.run(cmd, cwd=src_dir, shell=True, text=True, capture_output=True)
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"[dyncfs] Fortran compile failed for {src_dir}\n"
+            f"Error:\n{proc.stderr or proc.stdout}"
+        )
 
 
 class CustomBuildPy(_build_py):
@@ -76,13 +29,13 @@ class CustomBuildPy(_build_py):
 
         if not shutil.which("gfortran"):
             raise ValueError(
-                "Please install gfortran and ensure "
-                "that command 'gfortran' can be directly called"
+                r"Please install gfortran and ensure "
+                r"that command \'gfortran\' can be directly called"
             )
-        if not shutil.which("jar"):
+        if not shutil.which("java"):
             raise ValueError(
-                "Please install java and ensure that "
-                "command 'jar' can be directly called"
+                r"Please install java and ensure that "
+                r"command \'java\' can be directly called"
             )
 
         exec_dir = os.path.join(project_root, "dyncfs", "exec")
@@ -111,4 +64,4 @@ class CustomBuildPy(_build_py):
             _compile_dir(fortran_src_dir, output_binary, extra)
 
 
-setup(cmdclass={"build_py": CustomBuildPy})
+setup(cmdclass={"build_py": CustomBuildPy})  # type:ignore
