@@ -86,7 +86,7 @@ def cal_coulomb_failure_stress_poroelasticity(
     :param B_pore: Skempton's coefficient.
     :return: coulomb_stress(Pa)
     """
-    coulomb_stress = shear_stress + mu_f * (norm_stress + B_pore * mean_stress)
+    coulomb_stress = shear_stress + mu_f * (norm_stress - B_pore * mean_stress)
     return coulomb_stress
 
 
