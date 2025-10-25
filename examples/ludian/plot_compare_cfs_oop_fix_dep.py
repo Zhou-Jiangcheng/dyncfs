@@ -438,7 +438,7 @@ if __name__ == "__main__":
     cbar1 = fig.colorbar(
         im1, ax=ax1, orientation="horizontal", fraction=0.046, pad=0.12, extend="max"
     )
-    cbar1.set_label("Peak Dynamic Coulomb Failure Stress Change (MPa)")
+    cbar1.set_label("Peak-to-peak Dynamic Coulomb Failure Stress Change (MPa)")
     ticks_right = np.linspace(
         0.0, tick_range_right[1], round(tick_range_right[1] / tick_interval_right + 1)
     )
