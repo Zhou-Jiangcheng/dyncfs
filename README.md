@@ -43,12 +43,6 @@ For code modification and debugging, use editable mode:
 pip install -e .
 ```
 
-or install from pypi
-
-```
-pip install dyncfs
-```
-
 # Usage
 
 Fill in all parameters in the .ini file, and prepare the input files as described in `example.ini`, including `source_plane[m].csv` and `obs_plane[n].csv` under the input directory, as well as `model.nd` representing the Earth model.
