@@ -88,9 +88,9 @@ def read_time_series_qseis2025_ascii(path_greenfunc, start_count, output_type="d
 
 
 def read_time_series_qseis2025_bin(
-    path_greenfunc,
-    start_count,
-    output_type,
+        path_greenfunc,
+        start_count,
+        output_type,
 ):
     time_series_list = []
     name_list_psv, name_list_sh = get_outfile_name_list(output_type)
@@ -106,10 +106,10 @@ def read_time_series_qseis2025_bin(
 def synthesize_rzv(time_series, m1):
     # ex,ss,ds,cl
     rzv = (
-        time_series[0] * m1[0]
-        + time_series[1] * m1[1]
-        + time_series[2] * m1[2]
-        + time_series[3] * m1[3]
+            time_series[0] * m1[0]
+            + time_series[1] * m1[1]
+            + time_series[2] * m1[2]
+            + time_series[3] * m1[3]
     )
     return rzv
 
@@ -119,22 +119,48 @@ def synthesize_t(time_series, m2):
     return t
 
 
+def get_sorted_grid_params(target, grid_list):
+    """
+    Helper to find neighbors and weight for 1D interpolation on a sorted list.
+    Returns: val_low, val_high, weight_high
+    """
+    arr = np.array(grid_list)
+    if len(arr) == 0:
+        raise ValueError("Grid list is empty")
+    if len(arr) == 1:
+        return arr[0], arr[0], 0.0
+
+    # Handle out of bounds by clamping
+    if target <= arr[0]:
+        return arr[0], arr[0], 0.0
+    if target >= arr[-1]:
+        return arr[-1], arr[-1], 0.0
+
+    idx = np.searchsorted(arr, target)
+    # arr[idx-1] <= target <= arr[idx]
+    val_low = arr[idx - 1]
+    val_high = arr[idx]
+    weight = (target - val_low) / (val_high - val_low)
+    return val_low, val_high, weight
+
+
 def seek_qseis2025(
-    path_green,
-    event_depth_km,
-    receiver_depth_km,
-    az_deg,
-    dist_km,
-    focal_mechanism,
-    srate,
-    output_type,
-    rotate=True,
-    before_p=None,
-    pad_zeros=False,
-    shift=False,
-    only_seismograms=True,
-    model_name="ak135fc",
-    green_info=None,
+        path_green,
+        event_depth_km,
+        receiver_depth_km,
+        az_deg,
+        dist_km,
+        focal_mechanism,
+        srate,
+        output_type,
+        rotate=True,
+        before_p=None,
+        pad_zeros=False,
+        shift=False,
+        only_seismograms=True,
+        model_name="ak135fc",
+        green_info=None,
+        interpolate_type=0,
 ):
     if green_info is None:
         with open(os.path.join(path_green, "green_lib_info.json"), "r") as fr:
@@ -148,6 +174,8 @@ def seek_qseis2025(
     wavelet_type = green_info["wavelet_type"]
     grn_dep_list = green_info["event_depth_list"]
     grn_receiver_list = green_info["receiver_depth_list"]
+
+    # --- 1. Identify Nearest Neighbors (Used for Metadata) ---
     if not isinstance(grn_dep_list, list):
         grn_dep_source = grn_dep_list
     else:
@@ -161,50 +189,85 @@ def seek_qseis2025(
             np.argmin(np.abs(receiver_depth_km - np.array(grn_receiver_list)))
         ]
 
-    path_greenfunc = str(
-        os.path.join(path_green, "%.2f" % grn_dep_source, "%.2f" % grn_dep_receiver)
-    )
-    ind = max(
-        0,
-        round((dist_km - dist_range[0]) / delta_dist),
-    )
-    ind_group = ind // num_each_group
-    grn_dist = dist_range[0] + ind * delta_dist
-    start_count = ind - ind_group * num_each_group
+    # Calculate global distance index (float for interp, int for nearest)
+    dist_min = dist_range[0]
+    float_ind = (dist_km - dist_min) / delta_dist
+    nearest_indice = max(0, round(float_ind))
+    grn_dist = dist_range[0] + nearest_indice * delta_dist
 
-    path_greenfunc_sub = os.path.join(path_greenfunc, "%d_0" % ind_group)
-    if os.path.exists(os.path.join(path_greenfunc_sub, "grn_szt.npy")):
-        name_list_psv, name_list_sh, time_series_list = read_time_series_qseis2025_bin(
-            path_greenfunc=path_greenfunc_sub,
-            start_count=start_count,
-            output_type=output_type,
+    # --- 2. Helper to fetch raw data for a specific depth and distance index ---
+    def fetch_raw_green_data(src_depth, dist_idx):
+        path_greenfunc = str(
+            os.path.join(path_green, "%.2f" % src_depth, "%.2f" % grn_dep_receiver)
         )
-    else:
-        name_list_psv, name_list_sh, time_series_list = (
-            read_time_series_qseis2025_ascii(
+        # Ensure index is within bounds (though usually handled by search logic)
+        dist_idx = int(max(0, dist_idx))
+
+        ind_group = dist_idx // num_each_group
+        start_count = dist_idx - ind_group * num_each_group
+
+        path_greenfunc_sub = os.path.join(path_greenfunc, "%d_0" % ind_group)
+        if os.path.exists(os.path.join(path_greenfunc_sub, "grn_szt.npy")):
+            _, _, ts_list = read_time_series_qseis2025_bin(
                 path_greenfunc=path_greenfunc_sub,
                 start_count=start_count,
                 output_type=output_type,
             )
-        )
-    """
-    Note 4:
-    Double-Couple   m11/ m22/ m33/ m12/ m23/ m31  Azimuth_Factor_(tz,tr,tv)/(tt)
-    ============================================================================
-    explosion       1.0/ 1.0/ 1.0/ -- / -- / --       1.0         /   0.0
-    strike-slip     -- / -- / -- / 1.0/ -- / --       sin(2*azi)  /   cos(2*azi)
-                    1.0/-1.0/ -- / -- / -- / --       cos(2*azi)  /  -sin(2*azi)
-    dip-slip        -- / -- / -- / -- / -- / 1.0      cos(azi)    /   sin(azi)
-                    -- / -- / -- / -- / 1.0/ --       sin(azi)    /  -cos(azi)
-    clvd           -0.5/-0.5/ 1.0/ -- / -- / --       1.0         /   0.0
-    ============================================================================
-    Single-Force    fx / fy / fz                  Azimuth_Factor_(tz,tr,tv)/(tt)
-    ============================================================================
-    fz              -- / -- / 1.0                        1.0      /   0.0
-    fx              1.0/ -- / --                         cos(azi) /   sin(azi)
-    fy              -- / 1.0/ --                         sin(azi) /  -cos(azi)
-    ============================================================================
-    """
+        else:
+            _, _, ts_list = read_time_series_qseis2025_ascii(
+                path_greenfunc=path_greenfunc_sub,
+                start_count=start_count,
+                output_type=output_type,
+            )
+        return ts_list
+
+    # --- 3. Retrieve Data based on Interpolation Type ---
+    if interpolate_type == 0:
+        # === Type 0: Nearest Neighbor ===
+        time_series_list = fetch_raw_green_data(grn_dep_source, nearest_indice)
+
+    else:
+        # === Type 1: Bilinear Interpolation (Depth & Distance) ===
+
+        # A. Depth Interpolation Parameters
+        if not isinstance(grn_dep_list, list):
+            dep_src_low, dep_src_high, w_dep = grn_dep_list, grn_dep_list, 0.0
+        else:
+            dep_src_low, dep_src_high, w_dep = get_sorted_grid_params(
+                event_depth_km, grn_dep_list
+            )
+
+        # B. Distance Interpolation Parameters
+        ind_low = int(np.floor(float_ind))
+        # Ensure non-negative index
+        if ind_low < 0: ind_low = 0
+        w_dist = float_ind - ind_low
+        if w_dist < 1e-4: w_dist = 0.0 # Optimization
+
+        # C. Perform Bilinear Interpolation of Raw Data
+
+        # Helper to linear interpolate between two distance indices for a fixed depth
+        def get_dist_interp_data(src_depth):
+            raw_d0 = fetch_raw_green_data(src_depth, ind_low)
+            if w_dist > 0:
+                raw_d1 = fetch_raw_green_data(src_depth, ind_low + 1)
+                # Linear interpolate list of arrays
+                return [(1 - w_dist) * arr0 + w_dist * arr1 for arr0, arr1 in zip(raw_d0, raw_d1)]
+            else:
+                return raw_d0
+
+        # C1. Low Depth Layer
+        data_low_dep = get_dist_interp_data(dep_src_low)
+
+        # C2. High Depth Layer (if needed)
+        if w_dep > 1e-4 and dep_src_high != dep_src_low:
+            data_high_dep = get_dist_interp_data(dep_src_high)
+            # Combine Depths
+            time_series_list = [(1 - w_dep) * arr_l + w_dep * arr_h for arr_l, arr_h in zip(data_low_dep, data_high_dep)]
+        else:
+            time_series_list = data_low_dep
+
+    # --- 4. Synthesize Seismograms (Common Logic) ---
     [M11, M12, M13, M22, M23, M33] = check_convert_fm(focal_mechanism=focal_mechanism)
 
     exp = (M11 + M22 + M33) / 3
@@ -221,17 +284,6 @@ def seek_qseis2025(
     m1 = [exp, ss1 * sin_2az + ss2 * cos_2az, ds1 * cos_az + ds2 * sin_az, clvd]
     m2 = [ss1 * cos_2az - ss2 * sin_2az, ds1 * sin_az - ds2 * cos_az]
 
-    # p-sv
-    # ["tv,
-    # "tr", "tz",
-    # "ezz", "ezr", "err", "ett",
-    # "szz", "szr", "srr", "stt",
-    # "ot"]
-    # sh
-    # ["tt",
-    # "ezt", "ert",
-    # "szt", "srt",
-    # "oz", "or"]
     if output_type in one_com_list:
         uv = synthesize_rzv(time_series=time_series_list[0], m1=m1)
         seismograms = np.array(uv)
@@ -270,13 +322,14 @@ def seek_qseis2025(
             "stress | stress_rate | rota | rota_rate"
         )
 
+    # --- 5. Post-Processing (TPTS, Time Shift, Resample) ---
     tpts_table = None
     if (before_p is not None) or shift or pad_zeros:
         first_p_grn, first_s_grn = read_tpts_table(
             path_green=path_green,
             event_depth_km=grn_dep_source,
             receiver_depth_km=grn_dep_receiver,
-            ind=ind,
+            ind=nearest_indice,
         )
         tpts_table = {"p_onset": first_p_grn, "s_onset": first_s_grn}
 
@@ -325,13 +378,13 @@ def seek_qseis2025(
         seismograms_resample = np.cumsum(seismograms_resample, axis=1) / srate
     elif (wavelet_type == 2) and (("rate" in output_type) or (output_type == "velo")):
         seismograms_resample = (
-            signal.convolve(
-                seismograms_resample.T,
-                np.array([1, -1])[:, None],
-                mode="same",
-                method="auto",
-            ).T
-            / srate
+                signal.convolve(
+                    seismograms_resample.T,
+                    np.array([1, -1])[:, None],
+                    mode="same",
+                    method="auto",
+                ).T
+                / srate
         )
 
     if only_seismograms:

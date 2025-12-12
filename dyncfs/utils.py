@@ -174,6 +174,9 @@ def shift_green2real_tpts(
         len(seismograms[0]),
         round((first_s - tpts_table["p_onset"] + green_before_p) * srate),
     )
+    if s_count == p_count or s_count_new == p_count_new:
+        return seismograms, first_p, first_s
+
     for i in range(seismograms.shape[0]):
         green_before_p = seismograms[i][:p_count]
         p_s = linear_interp(seismograms[i][p_count:s_count], s_count_new - p_count_new)

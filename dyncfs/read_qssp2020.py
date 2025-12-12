@@ -35,24 +35,17 @@ def read_time_series_qssp2020(path_bin, ind, sampling_num):
 
 
 def seek_raw_qssp2020(
-    path_green,
-    event_depth,
-    receiver_depth,
-    dist,
-    output_type="disp",
-    green_info=None,
+        path_green,
+        event_depth,
+        receiver_depth,
+        dist,
+        output_type="disp",
+        green_info=None,
 ):
     """
     read raw data at stations located on the straight line from the origin to the north
     moment tensor in rtp axis
     data in enz axis
-    :param path_green:
-    :param event_depth: km
-    :param receiver_depth: km
-    :param dist: km
-    :param output_type: str, 'output_type must in  disp | velo | acce | strain | strain_rate | '
-            'stress | stress_rate | rotation | rotation_rate | gravitation | gravimeter'
-    :param green_info:
     """
     if green_info is None:
         with open(os.path.join(path_green, "green_lib_info.json"), "r") as fr:
@@ -82,7 +75,7 @@ def seek_raw_qssp2020(
                 "%.2f" % receiver_depth,
                 mt_com_list[i_rtp],
                 "",
-            )
+                )
         )
         for i_enz in range(len(enz_list)):
             dist_range = green_info["grn_dist_range"]
@@ -108,30 +101,51 @@ def seek_raw_qssp2020(
     return data_all
 
 
+def get_sorted_grid_params(target, grid_list):
+    """
+    Helper to find neighbors and weight for 1D interpolation on a sorted list.
+    Returns: val_low, val_high, weight_high
+    """
+    arr = np.array(grid_list)
+    if len(arr) == 0:
+        raise ValueError("Grid list is empty")
+    if len(arr) == 1:
+        return arr[0], arr[0], 0.0
+
+    # Handle out of bounds by clamping
+    if target <= arr[0]:
+        return arr[0], arr[0], 0.0
+    if target >= arr[-1]:
+        return arr[-1], arr[-1], 0.0
+
+    idx = np.searchsorted(arr, target)
+    # arr[idx-1] <= target <= arr[idx]
+    val_low = arr[idx - 1]
+    val_high = arr[idx]
+    weight = (target - val_low) / (val_high - val_low)
+    return val_low, val_high, weight
+
+
 def seek_qssp2020(
-    path_green,
-    event_depth_km,
-    receiver_depth_km,
-    az_deg,
-    dist_km,
-    focal_mechanism,
-    srate,
-    before_p=None,
-    pad_zeros=False,
-    shift=False,
-    rotate=True,
-    only_seismograms=True,
-    output_type="disp",
-    model_name="ak135",
-    green_info=None,
+        path_green,
+        event_depth_km,
+        receiver_depth_km,
+        az_deg,
+        dist_km,
+        focal_mechanism,
+        srate,
+        before_p=None,
+        pad_zeros=False,
+        shift=False,
+        rotate=True,
+        only_seismograms=True,
+        output_type="disp",
+        model_name="ak135",
+        green_info=None,
+        interpolate_type=0,
 ):
     """
     Read seismic data with either one, three, or six components based on output_type.
-
-    Depending on output_type, the function reads:
-      - one component (e.g., gravimeter),
-      - three components (e.g., displacement, velocity, acceleration, rotation, rotation rate, gravitation),
-      - or six components (e.g., strain, strain rate, stress, stress rate).
 
     Parameters:
         path_green (str): Root directory of the data.
@@ -139,49 +153,41 @@ def seek_qssp2020(
         receiver_depth_km (float): Receiver depth in km.
         az_deg (float): Azimuth in degrees.
         dist_km (float): Epicentral distance in km.
-        focal_mechanism (ndarray/list):
-                strike, dip, rake(deg), length=3 or
-                [M11, M12, M13, M22, M23, M33], in NED coordinates, length=6.
+        focal_mechanism (ndarray/list): [strike, dip, rake] or [M11, M12, M13, M22, M23, M33].
         srate (float): Sampling rate in Hz.
-        before_p (float, optional): Time before the P-wave arrival in seconds.
-        pad_zeros (bool, optional): Whether to pad with zeros.
-        shift (bool, optional): Whether to shift the seismograms.
-        rotate (bool, optional): Whether to perform rotation from rtz2ned.
-        only_seismograms (bool, optional): If True, only return seismograms.
-        output_type (str, optional): Output type string. For example, 'disp','velo','acce',
-                                     'rota','rota_rate','gravimeter','gravitation',
-                                     'strain','strain_rate','stress','stress_rate'.
-        model_name (str, optional): Model name string. If not provided, a default is set based on output_type:
-                                    - For one or three component types: "ak135"
-                                    - For six component types: "ak135" (or adjust as needed)
-        green_info (dict, optional): Information of Green's function libarary
-    Returns:
-        If only_seismograms is True:
-            seismograms (ndarray): For one-component: (1 x nt_cut),
-                                   for three-component: (3 x nt_cut),
-                                   for six-component: (6 x nt_cut).
-        Otherwise, returns a tuple:
-            (seismograms, tpts_table, first_p, first_s, grn_dist)
-            where tpts_table is a dict with keys "p_onset" and "s_onset".
+        before_p (float, optional): Time before P-wave.
+        pad_zeros (bool, optional): Pad with zeros.
+        shift (bool, optional): Shift seismograms based on tpts.
+        rotate (bool, optional): Rotate rtz2ned.
+        only_seismograms (bool, optional): Return only seismograms.
+        output_type (str, optional): 'disp', 'velo', 'strain', etc.
+        model_name (str, optional): Model name.
+        green_info (dict, optional): Green's function library info.
+        interpolate_type (int, optional):
+            0 = Nearest Neighbor (Original)
+            1 = Bilinear Interpolation (Distance & Depth)
     """
     if green_info is None:
         with open(os.path.join(path_green, "green_lib_info.json"), "r") as fr:
             green_info = json.load(fr)
     srate_grn = 1 / green_info["sampling_interval"]
     sampling_num = (
-        round(green_info["time_window"] / green_info["sampling_interval"]) + 1
+            round(green_info["time_window"] / green_info["sampling_interval"]) + 1
     )
     dist_range = green_info["grn_dist_range"]
     delta_dist = green_info["grn_delta_dist"]
     time_reduction = green_info["time_reduction"]
     grn_dep_list = green_info["event_depth_list"]
     grn_receiver_list = green_info["receiver_depth_list"]
+
+    # --- 1. Identify Nearest Neighbors (Used for Metadata and Type 0) ---
     if not isinstance(grn_dep_list, list):
         grn_dep_source = grn_dep_list
     else:
         grn_dep_source = grn_dep_list[
             np.argmin(np.abs(event_depth_km - np.array(grn_dep_list)))
         ]
+
     if not isinstance(grn_receiver_list, list):
         grn_dep_receiver = grn_receiver_list
     else:
@@ -189,7 +195,73 @@ def seek_qssp2020(
             np.argmin(np.abs(receiver_depth_km - np.array(grn_receiver_list)))
         ]
 
-    # Common: calculate rotation matrix and convert moment tensor
+    # Distance nearest neighbor index
+    dist_min = dist_range[0]
+    float_ind = (dist_km - dist_min) / delta_dist
+    nearest_indice = round(float_ind)
+    grn_dist = dist_range[0] + nearest_indice * delta_dist
+
+    # --- 2. Fetch Raw Green's Functions based on interpolate_type ---
+
+    if interpolate_type == 0:
+        # === Type 0: Nearest Neighbor (Fastest) ===
+        raw_final = seek_raw_qssp2020(
+            path_green,
+            grn_dep_source,
+            grn_dep_receiver,
+            grn_dist,
+            output_type,
+            green_info,
+        )
+
+    else:
+        # === Type 1: Bilinear Interpolation (Depth & Distance) ===
+
+        # A. Depth Interpolation Parameters
+        if not isinstance(grn_dep_list, list):
+            dep_src_low, dep_src_high, w_dep_src = grn_dep_list, grn_dep_list, 0.0
+        else:
+            dep_src_low, dep_src_high, w_dep_src = get_sorted_grid_params(
+                event_depth_km, grn_dep_list
+            )
+
+        # B. Distance Interpolation Parameters
+        ind_low = int(np.floor(float_ind))
+        w_dist = float_ind - ind_low
+        if w_dist < 1e-4: w_dist = 0.0 # Optimization
+
+        dist_low_km = dist_min + ind_low * delta_dist
+        dist_high_km = dist_min + (ind_low + 1) * delta_dist
+
+        # C. Helper to fetch raw
+        def fetch_raw(d_src, d_dist):
+            return seek_raw_qssp2020(
+                path_green, d_src, grn_dep_receiver, d_dist, output_type, green_info
+            )
+
+        # D. Perform Bilinear Interpolation
+        # D1. Low Depth Layer
+        raw_00 = fetch_raw(dep_src_low, dist_low_km)
+        if w_dist > 0:
+            raw_01 = fetch_raw(dep_src_low, dist_high_km)
+            raw_low_dep = (1 - w_dist) * raw_00 + w_dist * raw_01
+        else:
+            raw_low_dep = raw_00
+
+        # D2. High Depth Layer (if needed)
+        if w_dep_src > 1e-4 and dep_src_high != dep_src_low:
+            raw_10 = fetch_raw(dep_src_high, dist_low_km)
+            if w_dist > 0:
+                raw_11 = fetch_raw(dep_src_high, dist_high_km)
+                raw_high_dep = (1 - w_dist) * raw_10 + w_dist * raw_11
+            else:
+                raw_high_dep = raw_10
+
+            raw_final = (1 - w_dep_src) * raw_low_dep + w_dep_src * raw_high_dep
+        else:
+            raw_final = raw_low_dep
+
+    # --- 3. Prepare MT and Rotation (Common) ---
     gamma = np.deg2rad(az_deg)
     A_rotate = create_rotate_z_mat(gamma=gamma)
     focal_mechanism = check_convert_fm(focal_mechanism)
@@ -207,39 +279,22 @@ def seek_qssp2020(
     )
     mt_rtp = convert_mt_axis(mt_list, "ned2rtp")
 
-    # Select processing branch based on output_type
+    # --- 4. Process Components (Common) ---
     if output_type in one_com_list:
-        # One-component branch (e.g., gravimeter)
-        u = seek_raw_qssp2020(
-            path_green,
-            grn_dep_source,
-            grn_dep_receiver,
-            dist_km,
-            output_type,
-            green_info,
-        )
+        u = raw_final
         u_enz_green_north = np.zeros((sampling_num, 1))
         for i_rtp in range(6):
             u_enz_green_north[:, 0] += mt_rtp[i_rtp] * u[:, i_rtp]
         seismograms = u_enz_green_north.T
 
     elif output_type in three_com_list:
-        # Three-component branch: process data (e.g., displacement, velocity, acceleration)
-        u_all = seek_raw_qssp2020(
-            path_green,
-            grn_dep_source,
-            grn_dep_receiver,
-            dist_km,
-            output_type,
-            green_info,
-        )
+        u_all = raw_final
         u_enz_green_north = np.zeros((sampling_num, 3))
         for i_rtp in range(6):
             for i_enz in range(3):
                 u_enz_green_north[:, i_enz] += (
-                    mt_rtp[i_rtp] * u_all[:, i_enz + 3 * i_rtp]
+                        mt_rtp[i_rtp] * u_all[:, i_enz + 3 * i_rtp]
                 )
-        # Convert from green_north to RTZ coordinates
         u_rtz = np.zeros((sampling_num, 3))
         u_rtz[:, 0] = u_enz_green_north[:, 1]
         u_rtz[:, 1] = -u_enz_green_north[:, 0]
@@ -252,19 +307,10 @@ def seek_qssp2020(
             )
 
     elif output_type in six_com_list:
-        # Six-component branch: process data (e.g., strain, strain rate, stress, stress rate)
-        epsilon_all = seek_raw_qssp2020(
-            path_green,
-            grn_dep_source,
-            grn_dep_receiver,
-            dist_km,
-            output_type,
-            green_info,
-        )
+        epsilon_all = raw_final
         epsilon_enz_green_north = np.tensordot(
             epsilon_all.reshape(sampling_num, 6, 6), mt_rtp, axes=(1, 0)
         )
-
         if rotate:
             seismograms = rotate_symmetric_tensor_series(
                 epsilon_enz_green_north, gamma
@@ -276,15 +322,12 @@ def seek_qssp2020(
             "output_type must be one of: disp, velo, acce, rota, rota_rate, gravimeter, gravitation, strain, strain_rate, stress, stress_rate"
         )
 
-    # Compute the Green's function distance closest to the input distance.
-    nearest_indice = round((dist_km - dist_range[0]) / delta_dist)
-    grn_dist = dist_range[0] + nearest_indice * delta_dist
-
-    # Process P-wave arrival times if before_p, shift, or pad_zeros is set.
+    # --- 5. Post-processing (Time shifting, resampling) ---
+    # Note: TPTS are always read from the nearest grid point regardless of interpolation type
     tpts_table = None
     if (before_p is not None) or shift or pad_zeros:
         grn_first_p, grn_first_s = read_tpts_table(
-            path_green=path_green,
+            path_green=os.path.join(path_green, "GreenFunc"),
             event_depth_km=grn_dep_source,
             receiver_depth_km=grn_dep_receiver,
             ind=nearest_indice,
@@ -307,9 +350,6 @@ def seek_qssp2020(
     elif ts_count < 0:
         seismograms[:, :-ts_count] = 0
 
-    # Shift the seismograms if required.
-    first_p = None
-    first_s = None
     if shift:
         seismograms, first_p, first_s = shift_green2real_tpts(
             seismograms=seismograms,
@@ -321,11 +361,9 @@ def seek_qssp2020(
             receiver_depth_km=receiver_depth_km,
             model_name=model_name,
         )
-
-    # conv_shift = round(green_info["source_duration"] * srate_grn / 2)
-    # if conv_shift != 0:
-    #     seismograms = np.roll(seismograms, -conv_shift)
-    #     seismograms[:, -conv_shift:] = 0
+    else:
+        first_p = None
+        first_s = None
 
     seismograms_resample = np.zeros(
         (seismograms.shape[0], round(sampling_num * srate / srate_grn))
@@ -335,7 +373,6 @@ def seek_qssp2020(
             seismograms[i], srate_old=srate_grn, srate_new=srate, zero_phase=True
         )
 
-    # Return results.
     if only_seismograms:
         return seismograms_resample
     else:
