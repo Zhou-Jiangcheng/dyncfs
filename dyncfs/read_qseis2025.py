@@ -1,5 +1,6 @@
 import os
 import json
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -145,23 +146,55 @@ def get_sorted_grid_params(target, grid_list):
 
 
 def seek_qseis2025(
-        path_green,
-        event_depth_km,
-        receiver_depth_km,
-        az_deg,
-        dist_km,
-        focal_mechanism,
-        srate,
-        output_type,
-        rotate=True,
-        before_p=None,
-        pad_zeros=False,
-        shift=False,
-        only_seismograms=True,
-        model_name="ak135fc",
-        green_info=None,
-        interpolate_type=0,
+        path_green: str,
+        event_depth_km: float,
+        receiver_depth_km: float,
+        az_deg: float,
+        dist_km: float,
+        focal_mechanism: Union[np.ndarray, list],
+        srate: float,
+        output_type: str = 'disp',
+        rotate: bool = True,
+        before_p: Union[float, None] = None,
+        pad_zeros: bool = False,
+        shift: bool = False,
+        only_seismograms: bool = True,
+        model_name: str = "ak135fc",
+        green_info: Union[dict, None] = None,
+        interpolate_type: int = 0,
 ):
+    """
+    Read synthetic seismograms.
+
+    :param path_green: Root directory of the data.
+    :param event_depth_km: Event depth in km.
+    :param receiver_depth_km: Receiver depth in km.
+    :param az_deg: Azimuth in degrees.
+    :param dist_km: Epicentral distance in km.
+    :param focal_mechanism: [strike, dip, rake] or [M11, M12, M13, M22, M23, M33].
+    :param srate: Sampling rate in Hz.
+    :param output_type: disp | velo | strain | strain_rate |
+            stress | stress_rate | rota | rota_rate.
+    :param before_p: Time before P-wave.
+    :param pad_zeros: Pad with zeros.
+    :param shift: Shift seismograms based on tpts.
+    :param rotate: Rotate rtz2ned.
+    :param only_seismograms: Return only seismograms.
+    :param model_name: Model name.
+    :param green_info: Green's function library info.
+    :param interpolate_type:
+            0 for nearest neighbor,
+            1 for trilinear interpolation (Source Depth, Receiver Depth, Distance).
+    :return: (
+            seismograms_resample,
+            tpts_table,
+            first_p,
+            first_s,
+            grn_dep_source,
+            grn_dep_receiver,
+            grn_dist,
+        )
+    """
     if green_info is None:
         with open(os.path.join(path_green, "green_lib_info.json"), "r") as fr:
             green_info = json.load(fr)
@@ -195,12 +228,12 @@ def seek_qseis2025(
     nearest_indice = max(0, round(float_ind))
     grn_dist = dist_range[0] + nearest_indice * delta_dist
 
-    # --- 2. Helper to fetch raw data for a specific depth and distance index ---
-    def fetch_raw_green_data(src_depth, dist_idx):
+    # --- 2. Helper to fetch raw data for a specific (source, receiver, distance) ---
+    def fetch_raw_green_data(src_depth, rec_depth, dist_idx):
         path_greenfunc = str(
-            os.path.join(path_green, "%.2f" % src_depth, "%.2f" % grn_dep_receiver)
+            os.path.join(path_green, "%.2f" % src_depth, "%.2f" % rec_depth)
         )
-        # Ensure index is within bounds (though usually handled by search logic)
+        # Ensure index is within bounds
         dist_idx = int(max(0, dist_idx))
 
         ind_group = dist_idx // num_each_group
@@ -224,48 +257,73 @@ def seek_qseis2025(
     # --- 3. Retrieve Data based on Interpolation Type ---
     if interpolate_type == 0:
         # === Type 0: Nearest Neighbor ===
-        time_series_list = fetch_raw_green_data(grn_dep_source, nearest_indice)
+        time_series_list = fetch_raw_green_data(
+            grn_dep_source, grn_dep_receiver, nearest_indice
+        )
 
     else:
-        # === Type 1: Bilinear Interpolation (Depth & Distance) ===
+        # === Type 1: Trilinear Interpolation (Source, Receiver, Distance) ===
 
-        # A. Depth Interpolation Parameters
+        # A. Source Depth Interpolation Parameters
         if not isinstance(grn_dep_list, list):
-            dep_src_low, dep_src_high, w_dep = grn_dep_list, grn_dep_list, 0.0
+            d_src_low, d_src_high, w_src = grn_dep_list, grn_dep_list, 0.0
         else:
-            dep_src_low, dep_src_high, w_dep = get_sorted_grid_params(
+            d_src_low, d_src_high, w_src = get_sorted_grid_params(
                 event_depth_km, grn_dep_list
             )
 
-        # B. Distance Interpolation Parameters
+        # B. Receiver Depth Interpolation Parameters (NEW)
+        if not isinstance(grn_receiver_list, list):
+            d_rec_low, d_rec_high, w_rec = grn_receiver_list, grn_receiver_list, 0.0
+        else:
+            d_rec_low, d_rec_high, w_rec = get_sorted_grid_params(
+                receiver_depth_km, grn_receiver_list
+            )
+
+        # C. Distance Interpolation Parameters
         ind_low = int(np.floor(float_ind))
-        # Ensure non-negative index
-        if ind_low < 0: ind_low = 0
+        if ind_low < 0:
+            ind_low = 0
         w_dist = float_ind - ind_low
-        if w_dist < 1e-4: w_dist = 0.0 # Optimization
+        if w_dist < 1e-4:
+            w_dist = 0.0
 
-        # C. Perform Bilinear Interpolation of Raw Data
+        # D. Nested Interpolation Helpers
 
-        # Helper to linear interpolate between two distance indices for a fixed depth
-        def get_dist_interp_data(src_depth):
-            raw_d0 = fetch_raw_green_data(src_depth, ind_low)
+        # D1. Interpolate Distance (Innermost)
+        def get_dist_interp_data(src_depth, rec_depth):
+            raw_d0 = fetch_raw_green_data(src_depth, rec_depth, ind_low)
             if w_dist > 0:
-                raw_d1 = fetch_raw_green_data(src_depth, ind_low + 1)
-                # Linear interpolate list of arrays
-                return [(1 - w_dist) * arr0 + w_dist * arr1 for arr0, arr1 in zip(raw_d0, raw_d1)]
+                raw_d1 = fetch_raw_green_data(src_depth, rec_depth, ind_low + 1)
+                return [
+                    (1 - w_dist) * arr0 + w_dist * arr1
+                    for arr0, arr1 in zip(raw_d0, raw_d1)
+                ]
             else:
                 return raw_d0
 
-        # C1. Low Depth Layer
-        data_low_dep = get_dist_interp_data(dep_src_low)
+        # D2. Interpolate Receiver Depth (Middle)
+        def get_rec_interp_data(src_depth):
+            data_r0 = get_dist_interp_data(src_depth, d_rec_low)
+            if w_rec > 1e-4 and d_rec_high != d_rec_low:
+                data_r1 = get_dist_interp_data(src_depth, d_rec_high)
+                return [
+                    (1 - w_rec) * arr0 + w_rec * arr1
+                    for arr0, arr1 in zip(data_r0, data_r1)
+                ]
+            else:
+                return data_r0
 
-        # C2. High Depth Layer (if needed)
-        if w_dep > 1e-4 and dep_src_high != dep_src_low:
-            data_high_dep = get_dist_interp_data(dep_src_high)
-            # Combine Depths
-            time_series_list = [(1 - w_dep) * arr_l + w_dep * arr_h for arr_l, arr_h in zip(data_low_dep, data_high_dep)]
+        # E. Interpolate Source Depth (Outermost)
+        data_low_src = get_rec_interp_data(d_src_low)
+        if w_src > 1e-4 and d_src_high != d_src_low:
+            data_high_src = get_rec_interp_data(d_src_high)
+            time_series_list = [
+                (1 - w_src) * arr0 + w_src * arr1
+                for arr0, arr1 in zip(data_low_src, data_high_src)
+            ]
         else:
-            time_series_list = data_low_dep
+            time_series_list = data_low_src
 
     # --- 4. Synthesize Seismograms (Common Logic) ---
     [M11, M12, M13, M22, M23, M33] = check_convert_fm(focal_mechanism=focal_mechanism)

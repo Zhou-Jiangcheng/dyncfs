@@ -1,5 +1,6 @@
 import os
 import json
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -127,45 +128,56 @@ def get_sorted_grid_params(target, grid_list):
 
 
 def seek_qssp2020(
-        path_green,
-        event_depth_km,
-        receiver_depth_km,
-        az_deg,
-        dist_km,
-        focal_mechanism,
-        srate,
-        before_p=None,
-        pad_zeros=False,
-        shift=False,
-        rotate=True,
-        only_seismograms=True,
-        output_type="disp",
-        model_name="ak135",
-        green_info=None,
-        interpolate_type=0,
+        path_green: str,
+        event_depth_km: float,
+        receiver_depth_km: float,
+        az_deg: float,
+        dist_km: float,
+        focal_mechanism: Union[np.ndarray, list],
+        srate: float,
+        output_type: str = 'disp',
+        rotate: bool = True,
+        before_p: Union[float, None] = None,
+        pad_zeros: bool = False,
+        shift: bool = False,
+        only_seismograms: bool = True,
+        model_name: str = "ak135fc",
+        green_info: Union[dict, None] = None,
+        interpolate_type: int = 0,
 ):
     """
-    Read seismic data with either one, three, or six components based on output_type.
+    Read synthetic seismograms.
 
-    Parameters:
-        path_green (str): Root directory of the data.
-        event_depth_km (float): Event depth in km.
-        receiver_depth_km (float): Receiver depth in km.
-        az_deg (float): Azimuth in degrees.
-        dist_km (float): Epicentral distance in km.
-        focal_mechanism (ndarray/list): [strike, dip, rake] or [M11, M12, M13, M22, M23, M33].
-        srate (float): Sampling rate in Hz.
-        before_p (float, optional): Time before P-wave.
-        pad_zeros (bool, optional): Pad with zeros.
-        shift (bool, optional): Shift seismograms based on tpts.
-        rotate (bool, optional): Rotate rtz2ned.
-        only_seismograms (bool, optional): Return only seismograms.
-        output_type (str, optional): 'disp', 'velo', 'strain', etc.
-        model_name (str, optional): Model name.
-        green_info (dict, optional): Green's function library info.
-        interpolate_type (int, optional):
-            0 = Nearest Neighbor (Original)
-            1 = Bilinear Interpolation (Distance & Depth)
+    :param path_green: Root directory of the data.
+    :param event_depth_km: Event depth in km.
+    :param receiver_depth_km: Receiver depth in km.
+    :param az_deg: Azimuth in degrees.
+    :param dist_km: Epicentral distance in km.
+    :param focal_mechanism: [strike, dip, rake] or [M11, M12, M13, M22, M23, M33].
+    :param srate: Sampling rate in Hz.
+    :param output_type:
+        one_com - "gravimeter"
+        three_com - "disp", "velo", "acce", "rota", "rota_rate", "gravitation"
+        six_com - "strain", "strain_rate", "stress", "stress_rate"
+    :param before_p: Time before P-wave.
+    :param pad_zeros: Pad with zeros.
+    :param shift: Shift seismograms based on tpts.
+    :param rotate: Rotate rtz2ned.
+    :param only_seismograms: Return only seismograms.
+    :param model_name: Model name.
+    :param green_info: Green's function library info.
+    :param interpolate_type:
+            0 for nearest neighbor,
+            1 for trilinear interpolation (Source Depth, Receiver Depth, Distance).
+    :return: (
+            seismograms_resample,
+            tpts_table,
+            first_p,
+            first_s,
+            grn_dep_source,
+            grn_dep_receiver,
+            grn_dist,
+        )
     """
     if green_info is None:
         with open(os.path.join(path_green, "green_lib_info.json"), "r") as fr:
@@ -180,7 +192,7 @@ def seek_qssp2020(
     grn_dep_list = green_info["event_depth_list"]
     grn_receiver_list = green_info["receiver_depth_list"]
 
-    # --- 1. Identify Nearest Neighbors (Used for Metadata and Type 0) ---
+    # --- 1. Identify Nearest Neighbors (Used for Metadata) ---
     if not isinstance(grn_dep_list, list):
         grn_dep_source = grn_dep_list
     else:
@@ -195,13 +207,13 @@ def seek_qssp2020(
             np.argmin(np.abs(receiver_depth_km - np.array(grn_receiver_list)))
         ]
 
-    # Distance nearest neighbor index
+    # Nearest distance logic for metadata
     dist_min = dist_range[0]
     float_ind = (dist_km - dist_min) / delta_dist
     nearest_indice = round(float_ind)
     grn_dist = dist_range[0] + nearest_indice * delta_dist
 
-    # --- 2. Fetch Raw Green's Functions based on interpolate_type ---
+    # --- 2. Retrieve Raw Green's Function Data based on Interpolation Type ---
 
     if interpolate_type == 0:
         # === Type 0: Nearest Neighbor (Fastest) ===
@@ -215,51 +227,67 @@ def seek_qssp2020(
         )
 
     else:
-        # === Type 1: Bilinear Interpolation (Depth & Distance) ===
+        # === Type 1: Trilinear Interpolation (Src Depth, Rec Depth, Distance) ===
 
-        # A. Depth Interpolation Parameters
+        # A. Source Depth Interpolation Parameters
         if not isinstance(grn_dep_list, list):
-            dep_src_low, dep_src_high, w_dep_src = grn_dep_list, grn_dep_list, 0.0
+            d_src_low, d_src_high, w_src = grn_dep_list, grn_dep_list, 0.0
         else:
-            dep_src_low, dep_src_high, w_dep_src = get_sorted_grid_params(
+            d_src_low, d_src_high, w_src = get_sorted_grid_params(
                 event_depth_km, grn_dep_list
             )
 
-        # B. Distance Interpolation Parameters
+        # B. Receiver Depth Interpolation Parameters (NEW)
+        if not isinstance(grn_receiver_list, list):
+            d_rec_low, d_rec_high, w_rec = grn_receiver_list, grn_receiver_list, 0.0
+        else:
+            d_rec_low, d_rec_high, w_rec = get_sorted_grid_params(
+                receiver_depth_km, grn_receiver_list
+            )
+
+        # C. Distance Interpolation Parameters
         ind_low = int(np.floor(float_ind))
+        if ind_low < 0:
+            ind_low = 0
         w_dist = float_ind - ind_low
-        if w_dist < 1e-4: w_dist = 0.0 # Optimization
+        if w_dist < 1e-4:
+            w_dist = 0.0
 
         dist_low_km = dist_min + ind_low * delta_dist
         dist_high_km = dist_min + (ind_low + 1) * delta_dist
 
-        # C. Helper to fetch raw
-        def fetch_raw(d_src, d_dist):
+        # D. Helper to fetch raw
+        def fetch_raw(d_src, d_rec, d_dist):
             return seek_raw_qssp2020(
-                path_green, d_src, grn_dep_receiver, d_dist, output_type, green_info
+                path_green, d_src, d_rec, d_dist, output_type, green_info
             )
 
-        # D. Perform Bilinear Interpolation
-        # D1. Low Depth Layer
-        raw_00 = fetch_raw(dep_src_low, dist_low_km)
-        if w_dist > 0:
-            raw_01 = fetch_raw(dep_src_low, dist_high_km)
-            raw_low_dep = (1 - w_dist) * raw_00 + w_dist * raw_01
-        else:
-            raw_low_dep = raw_00
-
-        # D2. High Depth Layer (if needed)
-        if w_dep_src > 1e-4 and dep_src_high != dep_src_low:
-            raw_10 = fetch_raw(dep_src_high, dist_low_km)
+        # E. Nested Interpolation Logic
+        # E1. Interpolate Distance (Innermost)
+        def get_dist_interp_data(src_depth, rec_depth):
+            raw_d0 = fetch_raw(src_depth, rec_depth, dist_low_km)
             if w_dist > 0:
-                raw_11 = fetch_raw(dep_src_high, dist_high_km)
-                raw_high_dep = (1 - w_dist) * raw_10 + w_dist * raw_11
+                raw_d1 = fetch_raw(src_depth, rec_depth, dist_high_km)
+                return (1 - w_dist) * raw_d0 + w_dist * raw_d1
             else:
-                raw_high_dep = raw_10
+                return raw_d0
 
-            raw_final = (1 - w_dep_src) * raw_low_dep + w_dep_src * raw_high_dep
+        # E2. Interpolate Receiver Depth (Middle)
+        def get_rec_interp_data(src_depth):
+            data_r0 = get_dist_interp_data(src_depth, d_rec_low)
+            if w_rec > 1e-4 and d_rec_high != d_rec_low:
+                data_r1 = get_dist_interp_data(src_depth, d_rec_high)
+                return (1 - w_rec) * data_r0 + w_rec * data_r1
+            else:
+                return data_r0
+
+        # E3. Interpolate Source Depth (Outermost)
+        data_low_src = get_rec_interp_data(d_src_low)
+        if w_src > 1e-4 and d_src_high != d_src_low:
+            data_high_src = get_rec_interp_data(d_src_high)
+            raw_final = (1 - w_src) * data_low_src + w_src * data_high_src
         else:
-            raw_final = raw_low_dep
+            raw_final = data_low_src
 
     # --- 3. Prepare MT and Rotation (Common) ---
     gamma = np.deg2rad(az_deg)
@@ -279,7 +307,7 @@ def seek_qssp2020(
     )
     mt_rtp = convert_mt_axis(mt_list, "ned2rtp")
 
-    # --- 4. Process Components (Common) ---
+    # --- 4. Process Components (Using the interpolated raw_final data) ---
     if output_type in one_com_list:
         u = raw_final
         u_enz_green_north = np.zeros((sampling_num, 1))
@@ -323,7 +351,7 @@ def seek_qssp2020(
         )
 
     # --- 5. Post-processing (Time shifting, resampling) ---
-    # Note: TPTS are always read from the nearest grid point regardless of interpolation type
+    # TPTS tables are read from the nearest neighbor grid point
     tpts_table = None
     if (before_p is not None) or shift or pad_zeros:
         grn_first_p, grn_first_s = read_tpts_table(
