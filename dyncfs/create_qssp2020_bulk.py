@@ -18,7 +18,6 @@ from .create_qssp2020 import (
     convert_pd2bin_qssp2020,
 )
 from .utils import group, convert_earth_model_nd2nd_without_Q
-from .pytaup import create_tpts_table
 
 
 def _call_qssp2020_star(args):
@@ -289,6 +288,7 @@ def pre_process_qssp2020(
     path_nd_without_Q = os.path.join(path_green, "noQ.nd")
     convert_earth_model_nd2nd_without_Q(path_nd, path_nd_without_Q)
 
+    from .pytaup import create_tpts_table
     # creating tp and ts tables
     for event_depth in tqdm(event_depth_list, desc="Creating travel time tables"):
         for receiver_depth in receiver_depth_list:
