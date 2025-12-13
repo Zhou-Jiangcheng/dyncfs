@@ -140,8 +140,7 @@ def synthesize_dynamic_stress(
                         stf_array(dimensionless)]
                         The stf at the end will be normalized by m0.
     :param obs_array_single_point: 1D numpy array,
-                        [lat(deg), lon(deg), depth(km),
-                        strike(deg), dip(deg), rake(deg)]
+                        [lat(deg), lon(deg), depth(km)]
     :param srate_stf: Sampling rate of stf in Hz.
     :param static_stress: Static stress tensor used for correcting zero-frequency values.
     :param max_slowness: Seismograms after dist(km)*max_slowness(s/km) will be set to 0.
@@ -689,8 +688,7 @@ def cal_cfs_dynamic_single_point_oop(
                         stf_array(dimensionless)]
                         The stf at the end will be normalized by m0.
     :param obs_array_single_point: 1D numpy array,
-                        [lat(deg), lon(deg), depth(km),
-                        strike(deg), dip(deg), rake(deg)]
+                        [lat(deg), lon(deg), depth(km)]
     :param srate_stf: Sampling rate of stf in Hz.
     :param tectonic_stress_type: 1 for stress, 2 for orientations
     :param tectonic_stress:
