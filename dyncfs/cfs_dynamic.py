@@ -408,10 +408,10 @@ def cal_cfs_dynamic_single_point_fm(
     sigma_vector = cal_stress_vector_ned_dynamic(stress_ned, n)
     sigma = np.dot(sigma_vector, n).flatten()
     tau = np.dot(sigma_vector, d).flatten()
-    mean_stress = (stress_ned[:, 0] + stress_ned[:, 3] + stress_ned[:, 5]) / 3
-    if B_pore != 0:
+    if B_pore == 0:
         cfs = cal_coulomb_failure_stress(norm_stress=sigma, shear_stress=tau, mu_f=mu_f)
     else:
+        mean_stress = (stress_ned[:, 0] + stress_ned[:, 3] + stress_ned[:, 5]) / 3
         cfs = cal_coulomb_failure_stress_poroelasticity(
             norm_stress=sigma,
             shear_stress=tau,
@@ -595,7 +595,7 @@ def cal_cfs_dynamic_single_point_opt_rake(
     # Shear stress scalar with optimal rake: tau = |s|
     tau = s_norm  # (N,)
 
-    if B_pore != 0:
+    if B_pore == 0:
         cfs = cal_coulomb_failure_stress(
             norm_stress=sigma_n, shear_stress=tau, mu_f=mu_f
         )
@@ -842,7 +842,7 @@ def cal_cfs_dynamic_single_point_oop(
     sigma2 = np.einsum("ni,ni->n", sigvec2, n2)
     tau2 = np.einsum("ni,ni->n", sigvec2, d2)
 
-    if B_pore != 0:
+    if B_pore == 0:
         cfs = cal_coulomb_failure_stress(
             norm_stress=sigma2, shear_stress=tau2, mu_f=mu_f
         )
