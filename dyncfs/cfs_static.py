@@ -113,7 +113,7 @@ def cal_cfs_static_single_point_fix_fm(
     sigma_vector = np.dot(sigma_tensor, n)
     sigma = np.dot(sigma_vector.T, n)[0][0]
     tau = np.dot(sigma_vector.T, d)[0][0]
-    if B_pore != 0:
+    if B_pore == 0:
         cfs = cal_coulomb_failure_stress(norm_stress=sigma, shear_stress=tau, mu_f=mu_f)
     else:
         cfs = cal_coulomb_failure_stress_poroelasticity(
@@ -169,7 +169,7 @@ def cal_cfs_static_single_point_opt_rake(
     sigma = np.dot(sigma_vector.T, n)[0][0]
     tau = np.dot(sigma_vector.T, d)[0][0]
 
-    if B_pore != 0:
+    if B_pore == 0:
         cfs = cal_coulomb_failure_stress(norm_stress=sigma, shear_stress=tau, mu_f=mu_f)
     else:
         cfs = cal_coulomb_failure_stress_poroelasticity(
@@ -260,7 +260,7 @@ def cal_cfs_static_single_point_opt_plane(
     sigma2 = np.dot(sigma_vector2.T, n2)[0][0]
     # tau2 = np.linalg.norm(sigma_vector2-sigma2*n2)
     tau2 = np.dot(sigma_vector2.T, d2)[0][0]
-    if B_pore != 0:
+    if B_pore == 0:
         cfs2 = cal_coulomb_failure_stress(
             norm_stress=sigma2, shear_stress=tau2, mu_f=mu_f
         )
