@@ -314,12 +314,36 @@ c
         if(outfile0(7)(flen0:flen0).ne.' ')goto 200
       enddo
 200   continue
-      outfile(1,7)=outfile0(7)(1:flen0)//'.tz'
-      outfile(2,7)=outfile0(7)(1:flen0)//'.tr'
-      outfile(3,7)=outfile0(7)(1:flen0)//'.tt'
-      outfile(4,7)=outfile0(7)(1:flen0)//'.tv'
+      outfile(1,istp)=outfile0(istp)(1:flen0)//'.tz'
+      outfile(2,istp)=outfile0(istp)(1:flen0)//'.tr'
+      outfile(3,istp)=outfile0(istp)(1:flen0)//'.tt'
+      outfile(4,istp)=outfile0(istp)(1:flen0)//'.tv'
       do i=1,4
-        flen(i,7)=flen0+3
+        flen(i,istp)=flen0+3
+      enddo
+c
+      outfile(5,istp)=outfile0(istp)(1:flen0)//'.ezz'
+      outfile(6,istp)=outfile0(istp)(1:flen0)//'.ezr'
+      outfile(7,istp)=outfile0(istp)(1:flen0)//'.ezt'
+      outfile(8,istp)=outfile0(istp)(1:flen0)//'.ett'
+      outfile(9,istp)=outfile0(istp)(1:flen0)//'.err'
+      outfile(10,istp)=outfile0(istp)(1:flen0)//'.ert'
+c
+      outfile(11,istp)=outfile0(istp)(1:flen0)//'.szz'
+      outfile(12,istp)=outfile0(istp)(1:flen0)//'.szr'
+      outfile(13,istp)=outfile0(istp)(1:flen0)//'.szt'
+      outfile(14,istp)=outfile0(istp)(1:flen0)//'.stt'
+      outfile(15,istp)=outfile0(istp)(1:flen0)//'.srr'
+      outfile(16,istp)=outfile0(istp)(1:flen0)//'.srt'
+      do i=5,16
+        flen(i,istp)=flen0+4
+      enddo
+c
+      outfile(17,istp)=outfile0(istp)(1:flen0)//'.oz'
+      outfile(18,istp)=outfile0(istp)(1:flen0)//'.or'
+      outfile(19,istp)=outfile0(istp)(1:flen0)//'.ot'
+      do i=17,19
+        flen(i,istp)=flen0+3
       enddo
 c
       nssel=0

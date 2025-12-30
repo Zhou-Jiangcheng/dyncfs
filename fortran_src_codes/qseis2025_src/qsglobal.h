@@ -48,7 +48,7 @@ c     PARAMETERS FOR ESTIMATE WAVENUMBER
 c     ===========================================
 c
       integer*4 nk0max,nbsjmax
-      parameter(nk0max=10000,nbsjmax=nk0max*8)
+      parameter(nk0max=5000,nbsjmax=nk0max*8)
       real*8 epswv,rd2r
 c      parameter(epswv=1.0d-06,rd2r=5.0d-02)
       common /wavenumber/ epswv,rd2r

@@ -355,15 +355,18 @@ c stt, srr, srt stress
                 else if(ms(istp).eq.0.d0)then
                   grns(lf,14,ir,istp)=grns(lf,14,ir,istp)+clar*yb(4)
      &              +2*cmur*(-ck/c2*(y(2,istp,ik)+y(3,istp,ik)))
-                  grns(lf,15,ir,istp)=grns(lf,15,ir,istp)+clar*yb(4)
-     &          +2*cmur*(-y(8,istp,ik)+ck/c2*(y(2,istp,ik)+y(3,istp,ik)))
+                  grns(lf,15,ir,istp)=grns(lf,15,ir,istp)+clar*yb(4)+
+     &          2*cmur*(-y(8,istp,ik)+ck/c2*(y(2,istp,ik)+y(3,istp,ik)))
                   grns(lf,16,ir,istp)=grns(lf,16,ir,istp)+2*cmur*
-     &              (y(9,istp,ik)/c2+cics(istp)*ck/c2*(y(2,istp,ik)
-     &              +y(3,istp,ik)))
+     &              (y(9,istp,ik)/c2+cics(istp)*ck/c2*(y(2,istp,ik)+
+     &              y(3,istp,ik)))
                 else if(ms(istp).eq.1.d0)then
-                  grns(lf,14,ir,istp)=grns(lf,14,ir,istp)+dcmplx(0.d0,0.d0)
-                  grns(lf,15,ir,istp)=grns(lf,15,ir,istp)+dcmplx(0.d0,0.d0)
-                  grns(lf,16,ir,istp)=grns(lf,16,ir,istp)+dcmplx(0.d0,0.d0)
+                  grns(lf,14,ir,istp)=grns(lf,14,ir,istp)
+     &                                +dcmplx(0.d0,0.d0)
+                  grns(lf,15,ir,istp)=grns(lf,15,ir,istp)
+     &                                +dcmplx(0.d0,0.d0)
+                  grns(lf,16,ir,istp)=grns(lf,16,ir,istp)
+     &                                +dcmplx(0.d0,0.d0)
                 else if(ms(istp).eq.2.d0)then
                   grns(lf,14,ir,istp)=grns(lf,14,ir,istp)+2*cmur*
      &               (-ck/c2*y(2,istp,ik))
