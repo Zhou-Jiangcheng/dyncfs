@@ -1,22 +1,22 @@
 import os
+import sys
+import platform
 
 import numpy as np
 import jpype.imports  # use jpype to call java class
 
-jar_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "exec",
-    "TauP-2.6.1.jar",
-)
+if platform.system() == "Windows":
+    jar_path = os.path.join(sys.exec_prefix, 'Scripts', 'TauP.jar')
+else:
+    jar_path = os.path.join(sys.exec_prefix, 'bin', 'TauP.jar')
+
+if not os.path.exists(jar_path):
+    print(f"TauP.jar not found in {sys.exec_prefix}/bin or {sys.exec_prefix}/Scripts")
+    print("Please install the TauP toolkit and ensure TauP.jar is in the correct directory.")
+    sys.exit(1)
+
 if not jpype.isJVMStarted():
-    try:
-        jpype.startJVM(
-            "-ea",
-            "--enable-native-access=ALL-UNNAMED",
-            classpath=[jar_path],
-        )
-    except:
-        pass
+    jpype.startJVM("--enable-native-access=ALL-UNNAMED", classpath=[jar_path])
 from edu.sc.seis.TauP import TauP_Time  # type: ignore
 
 
