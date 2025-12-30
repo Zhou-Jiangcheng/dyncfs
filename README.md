@@ -11,6 +11,8 @@ Wang, R., & Wang, H. (2007). A fast converging and anti-aliasing algorithm for g
 
 Wang, R., Heimann, S., Zhang, Y., Wang, H., & Dahm, T. (2017). Complete synthetic seismograms based on a spherical self-gravitating earth model with an atmosphere–ocean–mantle–core structure. Geophysical Journal International, 210(3), 1739–1764. https://doi.org/10.1093/gji/ggx259
 
+(Accepted by GJI on 2025-12-30) Zhou J., Wang R., Zhang Y. DynCFS: A Program for Modeling Dynamic Coulomb Failure Stress Changes in Layered Elastic Media
+
 # Installation
 
 1. Install the requirments by conda (conda 24.11.3)
