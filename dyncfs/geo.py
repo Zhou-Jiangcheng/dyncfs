@@ -244,16 +244,22 @@ def convert_sub_faults_geo2ned(sub_faults, source_point, approximate=True):
     :param approximate:
     :return: sub_faults_ned (unit m)
     """
-    sub_faults_ned = np.zeros_like(sub_faults)
+    sub_faults_c = sub_faults.copy()
+    source_point_c = source_point.copy()
+    sub_faults_c[:, 2] = sub_faults_c[:, 2] * 1e3
+    source_point_c[2] = source_point_c[2] * 1e3
+    sub_faults_ned = np.zeros_like(sub_faults_c)
     if not approximate:
-        for n in range(sub_faults.shape[0]):
+        for n in range(sub_faults_c.shape[0]):
             sub_faults_ned[n, :] = convert_axis_delta_geo2ned(
-                *source_point.copy(), *sub_faults[n, :].copy()
+                *source_point_c.copy(), *sub_faults_c[n, :].copy()
             ).flatten()
     else:
-        sub_faults_ned[:, 0] = (sub_faults[:, 0] - source_point[0]) * d2m
-        sub_faults_ned[:, 1] = (sub_faults[:, 1] - source_point[1]) * d2m
-        sub_faults_ned[:, 2] = (sub_faults[:, 2] - source_point[2])* 1e3
+        for n in range(sub_faults_c.shape[0]):
+            x = (sub_faults_c[n, 0] - source_point_c[0]) * d2m
+            y = (sub_faults_c[n, 1] - source_point_c[1]) * d2m * np.cos(np.deg2rad(sub_faults_c[n, 0]))
+            z = sub_faults_c[n, 2] - source_point_c[2]
+            sub_faults_ned[n, :] = np.array([x, y, z])
     return sub_faults_ned
 
 
