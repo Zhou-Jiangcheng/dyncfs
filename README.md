@@ -2,17 +2,6 @@
 
 This Python package serves as the frontend for calculating and building a Green's function library for synthetic seismograms and then compute the static/dynamic Coulomb Failure Stress Change. The backend consists of Wang Rongjiang's program for calculating synthetic seismograms, including EDGRN/EDCMP, [QSEIS_2006_STRESS](https://github.com/Zhou-Jiangcheng/QSEIS_2006_STRESS) and QSSP.  Traveling time is calculated using [TAUP](https://github.com/crotwell/TauP). Some geographic coordinate transformations use code from [obspy](https://github.com/obspy/obspy).
 
-References:
-Wang, R. (1999). A simple orthonormalization method for stable and efficient computation of Green’s functions.  *Bulletin of the Seismological Society of America* ,  *89* (3), 733–741. [https://doi.org/10.1785/BSSA0890030733](https://doi.org/10.1785/BSSA0890030733)
-
-Wang, R. (2003). Computation of deformation induced by earthquakes in a multi-layered elastic crust—FORTRAN programs EDGRN/EDCMP. Computers & Geosciences, 29(2), 195–207. https://doi.org/10.1016/S0098-3004(02)00111-5
-
-Wang, R., & Wang, H. (2007). A fast converging and anti-aliasing algorithm for green’s functions in terms of spherical or cylindrical harmonics. Geophysical Journal International, 170(1), 239–248. https://doi.org/10.1111/j.1365-246X.2007.03385.x
-
-Wang, R., Heimann, S., Zhang, Y., Wang, H., & Dahm, T. (2017). Complete synthetic seismograms based on a spherical self-gravitating earth model with an atmosphere–ocean–mantle–core structure. Geophysical Journal International, 210(3), 1739–1764. https://doi.org/10.1093/gji/ggx259
-
-(Accepted by GJI on 2025-12-30) Zhou J., Wang R., Zhang Y. DynCFS: A Program for Modeling Dynamic Coulomb Failure Stress Changes in Layered Elastic Media
-
 # Installation
 
 1. Install the requirments by conda (conda 24.11.3)
@@ -98,3 +87,14 @@ if __name__ == "__main__":
     create_dynamic_lib(config)
     compute_dynamic_cfs_parallel(config)
 ```
+
+# References:
+Wang, R. (1999). A simple orthonormalization method for stable and efficient computation of Green’s functions.  *Bulletin of the Seismological Society of America* ,  *89* (3), 733–741. https://doi.org/10.1785/BSSA0890030733
+
+Wang, R. (2003). Computation of deformation induced by earthquakes in a multi-layered elastic crust—FORTRAN programs EDGRN/EDCMP. Computers & Geosciences, 29(2), 195–207. https://doi.org/10.1016/S0098-3004(02)00111-5
+
+Wang, R., & Wang, H. (2007). A fast converging and anti-aliasing algorithm for green’s functions in terms of spherical or cylindrical harmonics. Geophysical Journal International, 170(1), 239–248. https://doi.org/10.1111/j.1365-246X.2007.03385.x
+
+Wang, R., Heimann, S., Zhang, Y., Wang, H., & Dahm, T. (2017). Complete synthetic seismograms based on a spherical self-gravitating earth model with an atmosphere–ocean–mantle–core structure. Geophysical Journal International, 210(3), 1739–1764. https://doi.org/10.1093/gji/ggx259
+
+Zhou, J., Wang, R., & Zhang, Y. (2026). DynCFS: a program for modeling dynamic coulomb failure stress changes in layered elastic media. Geophysical Journal International, ggaf534. https://doi.org/10.1093/gji/ggaf534
