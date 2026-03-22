@@ -335,6 +335,7 @@ def compute_static_cfs(config: CfsConfig):
         receiver_depth_km_arr = np.tile(obs_plane[:, 2], M)  # (M*N,)
         focal_mechanism_arr = np.repeat(source_array[:, 3:6], N, axis=0)  # (M*N, 3)
         area_km_sq_arr = np.repeat(source_array[:, 6] * source_array[:, 7], N)  # (M*N,)
+        slip_m_arr = np.repeat(source_array[:, 8], N)                           # (M*N,)
 
         src_lat_grid = np.repeat(source_array[:, 0], N)
         src_lon_grid = np.repeat(source_array[:, 1], N)
@@ -362,6 +363,7 @@ def compute_static_cfs(config: CfsConfig):
             output_type="stress",
             times_mu=True,
             area_km_sq_arr=area_km_sq_arr,
+            slip_m_arr=slip_m_arr,
             model_name=os.path.join(config.path_green_static, "noQ.nd"),
             green_info=None,
         )
@@ -527,6 +529,7 @@ def compute_static_cfs_fix_depth(
     :param obs_delta_lat: Default equals to config.obs_delta_x, unit deg.
     :param obs_delta_lon: Default equals to config.obs_delta_y, unit deg.
     """
+    print("preprocessing")
     if obs_depth is None:
         obs_depth = config.fixed_obs_depth
     if optimal_type is None:
@@ -587,6 +590,7 @@ def compute_static_cfs_fix_depth(
     receiver_depth_km_arr = np.tile(obs_plane[:, 2], M)  # (M*N,)
     focal_mechanism_arr = np.repeat(source_array[:, 3:6], N, axis=0)  # (M*N, 3)
     area_km_sq_arr = np.repeat(source_array[:, 6] * source_array[:, 7], N)  # (M*N,)
+    slip_m_arr = np.repeat(source_array[:, 8], N)                           # (M*N,)
 
     src_lat_grid = np.repeat(source_array[:, 0], N)
     src_lon_grid = np.repeat(source_array[:, 1], N)
@@ -602,6 +606,7 @@ def compute_static_cfs_fix_depth(
     )
     dist_km_arr = dist_m_arr / 1000.0
 
+    print("reading stress tensors")
     st_mn_bulk = seek_edcmp2_bulk(
         path_green=config.path_green_static,
         event_depth_km_arr=event_depth_km_arr,
@@ -614,6 +619,7 @@ def compute_static_cfs_fix_depth(
         output_type="stress",
         times_mu=True,
         area_km_sq_arr=area_km_sq_arr,
+        slip_m_arr=slip_m_arr,
         model_name=os.path.join(config.path_green_static, "noQ.nd"),
         green_info=None,
     )

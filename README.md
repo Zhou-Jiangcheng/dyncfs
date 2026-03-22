@@ -1,36 +1,28 @@
 # Introduction
 
-This Python package serves as the frontend for calculating and building a Green's function library for synthetic seismograms and then compute the static/dynamic Coulomb Failure Stress Change. The backend consists of Wang Rongjiang's program for calculating synthetic seismograms, including EDGRN/EDCMP, [QSEIS_2006_STRESS](https://github.com/Zhou-Jiangcheng/QSEIS_2006_STRESS) and QSSP.  Traveling time is calculated using [TAUP](https://github.com/crotwell/TauP). Some geographic coordinate transformations use code from [obspy](https://github.com/obspy/obspy).
+This Python package serves as the frontend for computing static and dynamic Coulomb Failure Stress changes in layerd media. The backend relies on programs developed by Rongjiang Wang and modified by Jiangcheng Zhou for calculating synthetic seismograms, specifically EDGRN/EDCMP, [QSEIS_2006_STRESS](https://github.com/Zhou-Jiangcheng/QSEIS_2006_STRESS), and QSSP. The generation and retrieval of Green's function libraries are handled by the [pygrnwang](https://github.com/Zhou-Jiangcheng/pygrnwang) package, while travel-time calculations and geographic coordinate transformations are implemented using [obspy](https://github.com/obspy/obspy).
 
 # Installation
 
-1. Install the requirments by conda (conda 24.11.3)
+1. For user mode
 
 ```
-conda create -n cfs python=3.11
+pip install dyncfs
+```
+
+2. For developer mode.
+
+```
+conda create -n cfs python=3.13
 conda activate cfs
-conda install openjdk jpype1 gfortran numpy scipy pandas matplotlib tqdm -c conda-forge
+conda install gfortran obspy tqdm -c conda-forge
 conda install geographiclib mpi4py -c conda-forge # optional
-```
-
-or install the requirments using system package manager, such as apt (Debian 12)
-
-```
-sudo apt install openjdk-17-jdk gfortran
-sudo apt install openmpi-common # optional
-```
-
-2. Download this reposity and install by pip.
-
-```
+git clone https://github.com/Zhou-Jiangcheng/pygrnwang
+cd pygrnwang
+pip install -e .
+cd ..
 git clone https://github.com/Zhou-Jiangcheng/dyncfs.git
 cd dyncfs
-pip install .
-```
-
-For code modification and debugging, use editable mode:
-
-```
 pip install -e .
 ```
 
