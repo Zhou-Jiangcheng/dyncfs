@@ -93,7 +93,7 @@ if __name__ == "__main__":
     print(mt2plane(mt))
 
     from obspy.imaging.beachball import beachball
-    from dyncfs.focal_mechanism import convert_mt_axis
+    from pygrnwang.focal_mechanism import convert_mt_axis
 
     bb = beachball(
         convert_mt_axis(plane2mt(1, fm[0], fm[1], fm[2]), convert_flag="ned2rtp")

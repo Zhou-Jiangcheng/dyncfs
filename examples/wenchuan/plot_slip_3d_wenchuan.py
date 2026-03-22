@@ -8,7 +8,7 @@ from matplotlib.ticker import FuncFormatter
 import matplotlib.patheffects as pe
 
 from dyncfs.utils import reshape_sub_faults
-from dyncfs.geo import convert_sub_faults_geo2ned
+from pygrnwang.geo import convert_sub_faults_geo2ned
 
 plt.rcParams.update(
     {

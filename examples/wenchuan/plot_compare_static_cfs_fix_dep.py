@@ -9,7 +9,7 @@ from matplotlib.colors import Normalize, LinearSegmentedColormap
 from obspy.imaging.beachball import beach
 
 from dyncfs.configuration import CfsConfig
-from dyncfs.geo import d2km
+from pygrnwang.geo import d2km
 
 plt.rcParams.update(
     {
