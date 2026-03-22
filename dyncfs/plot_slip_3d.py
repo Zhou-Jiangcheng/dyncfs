@@ -11,7 +11,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 
 from .utils import reshape_sub_faults
-from .geo import convert_sub_faults_geo2ned
+from pygrnwang.geo import convert_sub_faults_geo2ned
 
 plt.rcParams.update(
     {

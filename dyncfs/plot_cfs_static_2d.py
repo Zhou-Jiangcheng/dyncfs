@@ -86,12 +86,12 @@ def plot_cfs_static_2d(
     ax.set_ylabel("Along Dip (km)")
 
     xt = np.arange(round(ax.get_xlim()[1]))
-    xl = [f"{float(i) * sub_length_dip_km:.1f}" for i in xt]
+    xl = [f"{float(i) * sub_length_strike_km:.1f}" for i in xt]
     ax.set_xticks(xt[::tick_interval] - 0.5)
     ax.set_xticklabels(xl[::tick_interval])
 
     yt = np.arange(round(ax.get_ylim()[0]))
-    yl = [f"{float(i) * sub_length_strike_km:.1f}" for i in yt]
+    yl = [f"{float(i) * sub_length_dip_km:.1f}" for i in yt]
     ax.set_yticks(yt[::tick_interval] - 0.5)
     ax.set_yticklabels(yl[::tick_interval])
 

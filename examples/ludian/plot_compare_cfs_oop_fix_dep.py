@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap, BoundaryNorm
 
 from dyncfs.configuration import CfsConfig
-from dyncfs.geo import d2km
+from pygrnwang.geo import d2km
 
 plt.rcParams.update(
     {

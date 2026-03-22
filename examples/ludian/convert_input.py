@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from dyncfs.focal_mechanism import plane2mt, mt2plane
+from pygrnwang.focal_mechanism import plane2mt, mt2plane
 from dyncfs.utils import read_nd
-from dyncfs.signal_process import resample
+from pygrnwang.signal_process import resample
 
 if __name__ == "__main__":
     df = pd.read_csv("ludian_joint.txt", sep="\\s+", header=None, index_col=False)

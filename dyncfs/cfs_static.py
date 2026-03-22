@@ -8,24 +8,25 @@ from multiprocessing import get_context
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from obspy.geodetics import gps2dist_azimuth
 
-from .configuration import CfsConfig
-from .focal_mechanism import (
+from pygrnwang.focal_mechanism import (
     plane2nd,
     tensor2full_tensor_matrix,
     check_convert_fm,
     mt2plane,
 )
-from .create_edgrn_bulk import (
+from pygrnwang.create_edgrn_bulk import (
     pre_process_edgrn2,
     create_grnlib_edgrn2_parallel,
 )
-from .create_edcmp_bulk import (
+from pygrnwang.create_edcmp_bulk import (
     pre_process_edcmp2,
-    compute_static_stress_edcmp2_sequential,
-    compute_static_stress_edcmp2_parallel,
+    create_grnlib_edcmp2_parallel,
 )
-from .read_edcmp import seek_edcmp2
+from pygrnwang.read_edcmp import seek_edcmp2_bulk
+
+from .configuration import CfsConfig
 from .utils import (
     read_source_array,
     ignore_slip_source_array,
@@ -37,19 +38,37 @@ def create_static_lib(config: CfsConfig):
     s = datetime.datetime.now()
     pre_process_edgrn2(
         processes_num=config.processes_num,
-        path_green=config.path_green_staic,
-        path_bin=config.path_bin_edgrn,
+        path_green=config.path_green_static,
         grn_source_depth_range=config.static_source_depth_range,
         grn_source_delta_depth=config.static_source_delta_depth,
         grn_dist_range=config.static_dist_range,
         grn_delta_dist=config.static_delta_dist,
-        grn_obs_depth_list=config.static_obs_depth_list,
+        obs_depth_list=config.static_obs_depth_list,
         wavenumber_sampling_rate=config.wavenumber_sampling_rate,
         path_nd=config.path_nd,
         earth_model_layer_num=config.earth_model_layer_num,
     )
     create_grnlib_edgrn2_parallel(
-        path_green=config.path_green_staic, check_finished=config.check_finished
+        path_green=config.path_green_static, check_finished=config.check_finished
+    )
+    pre_process_edcmp2(
+        processes_num=config.processes_num,
+        path_green=config.path_green_static,
+        grn_source_depth_range=config.static_source_depth_range,
+        grn_source_delta_depth=config.static_source_delta_depth,
+        grn_dist_range=config.static_dist_range,
+        grn_delta_dist=config.static_delta_dist,
+        obs_depth_list=config.static_obs_depth_list,
+        output_observables=(0, 0, 1, 0),
+        layered=config.layered,
+        lam=config.lam,
+        mu=config.mu,
+    )
+    create_grnlib_edcmp2_parallel(
+        path_green=config.path_green_static,
+        check_finished=config.check_finished,
+        convert_bulk=True,
+        remove=False,
     )
     e = datetime.datetime.now()
     print("run time:", e - s)
@@ -225,8 +244,8 @@ def cal_cfs_static_single_point_opt_plane(
     elif tectonic_stress_type == 2:
         R = np.zeros((3, 3))
         for i in range(3):
-            phi = np.deg2rad(tectonic_stress[i])
-            delta = np.deg2rad(tectonic_stress[i + 1])
+            phi = np.deg2rad(tectonic_stress[2 * i])
+            delta = np.deg2rad(tectonic_stress[2 * i + 1])
             R[:, i] = np.array(
                 [
                     np.cos(phi) * np.cos(delta),
@@ -295,49 +314,12 @@ def compute_static_cfs(config: CfsConfig):
     source_array = read_source_array(
         source_inds=config.source_inds,
         path_input=config.path_input,
-        shift2corner=True,
+        shift2corner=False,
     )
     if config.slip_thresh > 0:
         source_array = ignore_slip_source_array(source_array, config.slip_thresh)
     if config.cut_stf > 0:
         source_array = cut_stf_modify_source_array(source_array, config.cut_stf)
-    source_array_new = np.zeros((len(source_array), 9))
-    source_array_new[:, 0] = source_array[:, 8]
-    source_array_new[:, 1:9] = source_array[:, 0:8]
-    pre_process_edcmp2(
-        processes_num=config.processes_num,
-        path_green=config.path_green_staic,
-        path_bin=config.path_bin_edcmp,
-        obs_depth_list=config.static_obs_depth_list,
-        obs_x_range=config.obs_lat_range,
-        obs_y_range=config.obs_lon_range,
-        obs_delta_x=config.obs_delta_lat,
-        obs_delta_y=config.obs_delta_lon,
-        source_array=source_array_new,
-        source_ref=config.source_ref,
-        obs_ref=config.obs_ref,
-        layered=config.layered,
-        lam=config.lam,
-        mu=config.mu,
-    )
-    if config.processes_num == 1:
-        if config.multiprocessing_flag is not None:
-            os.environ["OMP_NUM_THREADS"] = ""
-            os.environ["MKL_NUM_THREADS"] = ""
-            os.environ["OPENBLAS_NUM_THREADS"] = ""
-            config.multiprocessing_flag = None
-        compute_static_stress_edcmp2_sequential(
-            path_green=config.path_green_staic, check_finished=config.check_finished
-        )
-    elif config.processes_num > 1:
-        if config.multiprocessing_flag is None:
-            os.environ["OMP_NUM_THREADS"] = "1"
-            os.environ["MKL_NUM_THREADS"] = "1"
-            os.environ["OPENBLAS_NUM_THREADS"] = "1"
-        mp.set_start_method("spawn", force=True)
-        compute_static_stress_edcmp2_parallel(
-            path_green=config.path_green_staic, check_finished=config.check_finished
-        )
 
     for ind_obs in config.obs_inds:
         obs_plane = pd.read_csv(
@@ -345,13 +327,47 @@ def compute_static_cfs(config: CfsConfig):
             index_col=False,
             header=None,
         ).to_numpy()
+        M = len(source_array)
         N = len(obs_plane)
-        stress_tensor_array_enz = seek_edcmp2(
-            str(os.path.join(config.path_output, "grn_s")),
-            "stress",
-            obs_plane[:, :3],
-            geo_coordinate=True,
+
+        # Vectorized: repeat each source across N obs points, tile obs across M sources
+        event_depth_km_arr = np.repeat(source_array[:, 2], N)  # (M*N,)
+        receiver_depth_km_arr = np.tile(obs_plane[:, 2], M)  # (M*N,)
+        focal_mechanism_arr = np.repeat(source_array[:, 3:6], N, axis=0)  # (M*N, 3)
+        area_km_sq_arr = np.repeat(source_array[:, 6] * source_array[:, 7], N)  # (M*N,)
+
+        src_lat_grid = np.repeat(source_array[:, 0], N)
+        src_lon_grid = np.repeat(source_array[:, 1], N)
+        obs_lat_grid = np.tile(obs_plane[:, 0], M)
+        obs_lon_grid = np.tile(obs_plane[:, 1], M)
+
+        _gps2dist_vec = np.vectorize(gps2dist_azimuth)
+        dist_m_arr, az_deg_arr, _ = _gps2dist_vec(
+            lat1=src_lat_grid,
+            lon1=src_lon_grid,
+            lat2=obs_lat_grid,
+            lon2=obs_lon_grid,
         )
+        dist_km_arr = dist_m_arr / 1000.0
+
+        st_mn_bulk = seek_edcmp2_bulk(
+            path_green=config.path_green_static,
+            event_depth_km_arr=event_depth_km_arr,
+            receiver_depth_km_arr=receiver_depth_km_arr,
+            az_deg_arr=az_deg_arr,
+            dist_km_arr=dist_km_arr,
+            focal_mechanism_arr=focal_mechanism_arr,
+            rotate=True,
+            check_convert_pure_dp=False,
+            output_type="stress",
+            times_mu=True,
+            area_km_sq_arr=area_km_sq_arr,
+            model_name=os.path.join(config.path_green_static, "noQ.nd"),
+            green_info=None,
+        )
+
+        # st_mn_bulk shape: (M*N, 6); sum over M sources to get per-obs stress → (N, 6)
+        stress_tensor_array_enz = st_mn_bulk.reshape(M, N, 6).sum(axis=0)
 
         stress_tensor_array = np.zeros_like(stress_tensor_array_enz)
         # ee en ez nn nz zz
@@ -491,7 +507,7 @@ def compute_static_cfs(config: CfsConfig):
 def compute_static_cfs_fix_depth(
     config: CfsConfig,
     obs_depth: float = None,
-    optimal_type: int = True,
+    optimal_type: int = None,
     receiver_mechanism: list = None,
     obs_lat_range: list = None,
     obs_lon_range: list = None,
@@ -513,6 +529,8 @@ def compute_static_cfs_fix_depth(
     """
     if obs_depth is None:
         obs_depth = config.fixed_obs_depth
+    if optimal_type is None:
+        optimal_type = config.optimal_type
     if obs_lat_range is None:
         obs_lat_range = config.obs_lat_range
     if obs_lon_range is None:
@@ -541,40 +559,6 @@ def compute_static_cfs_fix_depth(
             mt_mean = mt_mean + mt_i
         receiver_mechanism = mt2plane(mt=mt_mean)[0]
 
-    source_array_new = np.zeros((len(source_array), 9))
-    source_array_new[:, 0] = source_array[:, 8]
-    source_array_new[:, 1:9] = source_array[:, 0:8]
-    with open(os.path.join(config.path_green_staic, "green_lib_info.json"), "r") as fr:
-        green_info = json.load(fr)
-    grn_obs_depth_list = green_info["grn_obs_depth_list"]
-    grn_obs_depth = grn_obs_depth_list[
-        np.argmin(np.abs(obs_depth - np.array(grn_obs_depth_list)))
-    ]
-    pre_process_edcmp2(
-        processes_num=config.processes_num,
-        path_green=config.path_green_staic,
-        path_bin=config.path_bin_edcmp,
-        obs_depth_list=[grn_obs_depth],
-        obs_x_range=obs_lat_range,
-        obs_y_range=obs_lon_range,
-        obs_delta_x=obs_delta_lat,
-        obs_delta_y=obs_delta_lon,
-        source_array=source_array_new,
-        source_ref=config.source_ref,
-        obs_ref=config.obs_ref,
-        layered=config.layered,
-        lam=config.lam,
-        mu=config.mu,
-    )
-    if config.processes_num == 1:
-        compute_static_stress_edcmp2_sequential(
-            path_green=config.path_green_staic, check_finished=config.check_finished
-        )
-    elif config.processes_num > 1:
-        compute_static_stress_edcmp2_parallel(
-            path_green=config.path_green_staic, check_finished=config.check_finished
-        )
-
     Nx = int(np.ceil((obs_lat_range[1] - obs_lat_range[0]) / obs_delta_lat) + 1)
     Ny = int(np.ceil((obs_lon_range[1] - obs_lon_range[0]) / obs_delta_lon) + 1)
 
@@ -595,13 +579,47 @@ def compute_static_cfs_fix_depth(
             % (receiver_mechanism[0], receiver_mechanism[1], receiver_mechanism[2])
         )
 
+    M = len(source_array)
     N = len(obs_plane)
-    stress_tensor_array_enz = seek_edcmp2(
-        str(os.path.join(config.path_output, "grn_s")),
-        "stress",
-        obs_plane[:, :3],
-        geo_coordinate=True,
+
+    # Vectorized: repeat each source across N obs points, tile obs across M sources
+    event_depth_km_arr = np.repeat(source_array[:, 2], N)  # (M*N,)
+    receiver_depth_km_arr = np.tile(obs_plane[:, 2], M)  # (M*N,)
+    focal_mechanism_arr = np.repeat(source_array[:, 3:6], N, axis=0)  # (M*N, 3)
+    area_km_sq_arr = np.repeat(source_array[:, 6] * source_array[:, 7], N)  # (M*N,)
+
+    src_lat_grid = np.repeat(source_array[:, 0], N)
+    src_lon_grid = np.repeat(source_array[:, 1], N)
+    obs_lat_grid = np.tile(obs_plane[:, 0], M)
+    obs_lon_grid = np.tile(obs_plane[:, 1], M)
+
+    _gps2dist_vec = np.vectorize(gps2dist_azimuth)
+    dist_m_arr, az_deg_arr, _ = _gps2dist_vec(
+        lat1=src_lat_grid,
+        lon1=src_lon_grid,
+        lat2=obs_lat_grid,
+        lon2=obs_lon_grid,
     )
+    dist_km_arr = dist_m_arr / 1000.0
+
+    st_mn_bulk = seek_edcmp2_bulk(
+        path_green=config.path_green_static,
+        event_depth_km_arr=event_depth_km_arr,
+        receiver_depth_km_arr=receiver_depth_km_arr,
+        az_deg_arr=az_deg_arr,
+        dist_km_arr=dist_km_arr,
+        focal_mechanism_arr=focal_mechanism_arr,
+        rotate=True,
+        check_convert_pure_dp=False,
+        output_type="stress",
+        times_mu=True,
+        area_km_sq_arr=area_km_sq_arr,
+        model_name=os.path.join(config.path_green_static, "noQ.nd"),
+        green_info=None,
+    )
+
+    # st_mn_bulk shape: (M*N, 6); sum over M sources to get per-obs stress → (N, 6)
+    stress_tensor_array_enz = st_mn_bulk.reshape(M, N, 6).sum(axis=0)
 
     stress_tensor_array = np.zeros_like(stress_tensor_array_enz)
     # ee en ez nn nz zz
@@ -621,7 +639,7 @@ def compute_static_cfs_fix_depth(
     )
     np.save(path_stress_tensor, stress_tensor_array)
 
-    if config.optimal_type == 0:
+    if optimal_type == 0:
         n_array = np.zeros((N, 3))
         d_array = np.zeros((N, 3))
         norm_stress_array = np.zeros(N)
@@ -650,7 +668,7 @@ def compute_static_cfs_fix_depth(
             (shear_stress_array, "shear_stress_static"),
             (cfs_array, "cfs_static"),
         ]
-    elif config.optimal_type == 1:
+    elif optimal_type == 1:
         n_array = np.zeros((N, 3))
         d_array = np.zeros((N, 3))
         norm_stress_array = np.zeros(N)

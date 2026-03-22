@@ -4,19 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dyncfs"
-version = "2.0.3"
+version = "2.0.9"
 description = "A Python library for computing Coulomb Failure Stress Change."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [{ name = "Zhou Jiangcheng", email = "zhoujcpku@outlook.com" }]
 dependencies = [
-    "numpy>=2.3.3",
+    "pygrnwang>=2.0.9",
     "matplotlib>=3.9.2",
-    "scipy>=1.16.2",
-    "pandas>=2.2.3",
-    "jpype1>=1.5.2",
-    "tqdm>=4.67.1",
 ]
 
 [project.scripts]
@@ -32,6 +28,7 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["dyncfs*"]
+exclude = ["test*"]
 
 [tool.setuptools.package-data]
-dyncfs = ["exec/*.jar"]
+pygrnwang = ["exec/"]

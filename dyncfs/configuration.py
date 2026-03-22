@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from .utils import read_nd, bool2int
-from .geo import d2km, geographic_centroid
+from pygrnwang.geo import d2km, geographic_centroid
 
 
 class CfsConfig(object):
@@ -67,14 +67,14 @@ class CfsConfig(object):
 
         # path
         self.path_nd: str = None  # type: ignore
-        self.path_green_staic: str = None  # type: ignore
+        self.path_green_static: str = None  # type: ignore
         self.path_green_dynamic: str = None  # type: ignore
         self.path_output_results_static: str = None  # type: ignore
         self.path_output_results_dynamic: str = None  # type: ignore
-        self.path_bin_edgrn: str = None  # type: ignore
-        self.path_bin_edcmp: str = None  # type: ignore
-        self.path_bin_qseis: str = None  # type: ignore
-        self.path_bin_qssp: str = None  # type: ignore
+        # self.path_bin_edgrn: str = None  # type: ignore
+        # self.path_bin_edcmp: str = None  # type: ignore
+        # self.path_bin_qseis: str = None  # type: ignore
+        # self.path_bin_qssp: str = None  # type: ignore
 
         # edgrn2
         self.static_source_depth_range: Union[list[float],np.ndarray] = None  # type: ignore
@@ -138,8 +138,8 @@ class CfsConfig(object):
 
         # other path
         self.path_nd = os.path.join(self.path_input, "model.nd")
-        self.path_green_staic = os.path.join(self.path_output, "grn_s")
-        os.makedirs(self.path_green_staic, exist_ok=True)
+        self.path_green_static = os.path.join(self.path_output, "grn_s")
+        os.makedirs(self.path_green_static, exist_ok=True)
         if self.use_spherical:
             self.path_green_dynamic = os.path.join(self.path_output, "grn_d", "qssp")
         else:
@@ -149,26 +149,26 @@ class CfsConfig(object):
         os.makedirs(self.path_output_results_static, exist_ok=True)
         self.path_output_results_dynamic = os.path.join(self.path_output, "results", "dynamic")
         os.makedirs(self.path_output_results_dynamic, exist_ok=True)
-        self.path_bin_edgrn = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "exec",
-            "edgrn2.%s" % platform_exec,
-        )
-        self.path_bin_edcmp = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "exec",
-            "edcmp2.%s" % platform_exec,
-        )
-        self.path_bin_qseis = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "exec",
-            "qseis2025.%s" % platform_exec,
-        )
-        self.path_bin_qssp = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "exec",
-            "qssp2020.%s" % platform_exec,
-        )
+        # self.path_bin_edgrn = os.path.join(
+        #     os.path.dirname(os.path.abspath(__file__)),
+        #     "exec",
+        #     "edgrn2.%s" % platform_exec,
+        # )
+        # self.path_bin_edcmp = os.path.join(
+        #     os.path.dirname(os.path.abspath(__file__)),
+        #     "exec",
+        #     "edcmp2.%s" % platform_exec,
+        # )
+        # self.path_bin_qseis = os.path.join(
+        #     os.path.dirname(os.path.abspath(__file__)),
+        #     "exec",
+        #     "qseis2025.%s" % platform_exec,
+        # )
+        # self.path_bin_qssp = os.path.join(
+        #     os.path.dirname(os.path.abspath(__file__)),
+        #     "exec",
+        #     "qssp2020.%s" % platform_exec,
+        # )
 
         # [input_addition]
         self.optimal_type = int(config["input_addition"]["optimal_type"])
@@ -181,8 +181,8 @@ class CfsConfig(object):
             if self.tectonic_stress_type == 1:
                 for i in range(6):
                     self.tectonic_stress[i] = self.tectonic_stress[i] * 1e6
-            if self.optimal_type == 2 and self.tectonic_stress_type == 2:
-                raise ValueError('Can not optimal rake when full tectonic_stress is not provided!')
+            if self.optimal_type == 1 and self.tectonic_stress_type == 2:
+                raise ValueError('Can not only optimal rake when full tectonic_stress is not provided!')
         self.mu_f = float(config["input_addition"]["mu_f"])
         self.B_pore = float(config["input_addition"]["B_pore"])
         # self.calc_rup2unrup = config["input_addition"].getboolean("calc_rup2unrup")

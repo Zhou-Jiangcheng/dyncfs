@@ -6,8 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage import zoom
 
-from .signal_process import linear_interp
-from .geo import d2km
+from pygrnwang.geo import d2km
 
 
 def read_source_array(source_inds, path_input, shift2corner=False):
@@ -17,7 +16,7 @@ def read_source_array(source_inds, path_input, shift2corner=False):
             str(os.path.join(path_input, "source_plane%d.csv" % source_inds[ind_src])),
             index_col=False,
             header=None,
-        ).to_numpy()
+        ).dropna().to_numpy()
         if shift2corner:
             # source_plane columns:
             # 3: strike(deg), 4: dip(deg)
@@ -146,52 +145,6 @@ def group(inp_list, num_in_each_group):
     if rest != 0:
         group_list.append(inp_list[-rest:])
     return group_list
-
-
-def shift_green2real_tpts(
-        seismograms,
-        tpts_table,
-        green_before_p,
-        srate,
-        event_depth_km,
-        dist_in_km,
-        receiver_depth_km=0,
-        model_name="ak135",
-):
-    from .pytaup import cal_first_p_s
-    first_p, first_s = cal_first_p_s(
-        event_depth_km=event_depth_km,
-        dist_km=dist_in_km,
-        receiver_depth_km=receiver_depth_km,
-        model_name=model_name,
-    )
-    p_count = round(green_before_p * srate)
-    s_count = round(
-        (tpts_table["s_onset"] - tpts_table["p_onset"] + green_before_p) * srate
-    )
-    p_count_new = round((first_p - tpts_table["p_onset"] + green_before_p) * srate)
-    s_count_new = min(
-        len(seismograms[0]),
-        round((first_s - tpts_table["p_onset"] + green_before_p) * srate),
-    )
-    if s_count == p_count or s_count_new == p_count_new:
-        return seismograms, first_p, first_s
-
-    for i in range(seismograms.shape[0]):
-        green_before_p = seismograms[i][:p_count]
-        p_s = linear_interp(seismograms[i][p_count:s_count], s_count_new - p_count_new)
-        after_s = seismograms[i][s_count:]
-        if len(after_s) > 0:
-            after_s = linear_interp(
-                after_s, len(seismograms[i]) - len(green_before_p) - len(p_s)
-            )
-            seismograms[i] = np.concatenate([green_before_p, p_s, after_s])
-        else:
-            seismograms[i] = np.concatenate([green_before_p, p_s])[
-                : len(seismograms[i])
-            ]
-
-    return seismograms, first_p, first_s
 
 
 def cal_max_dist_from_2d_points(A: np.ndarray, B: np.ndarray):
@@ -397,24 +350,6 @@ def bool2int(input_bool):
         return 1
     else:
         return 0
-
-
-def call_exe(path_green, path_inp, path_finished, name):
-    name_exe = "%s.exe" % name if platform.system() == "Windows" else "%s.bin" % name
-    path_exe = os.path.join(path_green, name_exe)
-    proc = subprocess.Popen(
-        [path_exe],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    stdout_bytes, stderr_bytes = proc.communicate(str.encode(path_inp))
-    stdout_text = stdout_bytes.decode(errors="ignore")
-    stderr_text = stderr_bytes.decode(errors="ignore")
-    output = stdout_text + stderr_text
-    with open(path_finished, "w") as fw:
-        fw.writelines(output)
-        return None
 
 
 def ignore_slip_source_array(source_array, slip_thresh):

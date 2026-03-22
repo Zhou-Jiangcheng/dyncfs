@@ -8,9 +8,10 @@ from typing import List, Tuple
 import numpy as np
 import pandas as pd
 
+from pygrnwang.focal_mechanism import tensor2full_tensor_matrix
+from pygrnwang.geo import d2km, cartesian_2_spherical, convert_sub_faults_geo2ned
+
 from .configuration import CfsConfig
-from .focal_mechanism import tensor2full_tensor_matrix
-from .geo import d2km, cartesian_2_spherical, convert_sub_faults_geo2ned
 from .utils import read_source_array, reshape_sub_faults
 
 

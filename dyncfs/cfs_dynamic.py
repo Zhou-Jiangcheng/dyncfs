@@ -13,21 +13,22 @@ import numpy as np
 import pandas as pd
 from scipy import signal
 from tqdm import tqdm
-
-from .configuration import CfsConfig
-from .obspy_geo import gps2dist_azimuth
-from .create_qssp2020_bulk import (
+from obspy.geodetics import gps2dist_azimuth
+from pygrnwang.create_qssp2020_bulk import (
     pre_process_qssp2020,
     create_grnlib_qssp2020_parallel,
 )
-from .read_qssp2020 import seek_qssp2020
-from .create_qseis2025_bulk import (
+from pygrnwang.read_qssp2020 import seek_qssp2020
+from pygrnwang.create_qseis2025_bulk import (
     pre_process_qseis2025,
     create_grnlib_qseis2025_parallel,
 )
-from .read_qseis2025 import seek_qseis2025
-from .focal_mechanism import plane2nd, check_convert_fm, mt2plane
-from .signal_process import resample, correct_zero_frequency
+from pygrnwang.read_qseis2025 import seek_qseis2025
+from pygrnwang.focal_mechanism import plane2nd, check_convert_fm, mt2plane
+from pygrnwang.signal_process import resample
+
+from .configuration import CfsConfig
+from .signal_process import correct_zero_frequency
 from .cfs_static import (
     cal_coulomb_failure_stress,
     cal_coulomb_failure_stress_poroelasticity,
@@ -48,7 +49,6 @@ def create_dynamic_lib(config: CfsConfig):
         pre_process_qssp2020(
             processes_num=config.processes_num,
             path_green=config.path_green_dynamic,
-            path_bin=config.path_bin_qssp,
             event_depth_list=config.event_depth_list,
             receiver_depth_list=config.receiver_depth_list,
             spec_time_window=config.spec_time_window,
@@ -88,7 +88,6 @@ def create_dynamic_lib(config: CfsConfig):
         pre_process_qseis2025(
             processes_num=config.processes_num,
             path_green=config.path_green_dynamic,
-            path_bin=config.path_bin_qseis,
             event_depth_list=config.event_depth_list,
             receiver_depth_list=config.receiver_depth_list,
             dist_range=config.grn_dist_range,
