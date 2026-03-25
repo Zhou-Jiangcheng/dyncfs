@@ -39,13 +39,33 @@ def plot_dynamic_coulomb_stress_3d_nt(
     show=True,
     save=True,
 ):
+    """
+    sub_length_strike / sub_length_dip accept:
+      - scalar          : uniform length for all subfaults in all planes (km)
+      - 1-D array/list  : per-subfault lengths shared across all planes (km)
+      - list of scalars/arrays, one element per obs plane (km)
+    """
+    def _resolve_lengths(param, ind_obs, n_sub):
+        """Return a 1-D ndarray of length n_sub for the given obs plane."""
+        if np.isscalar(param):
+            return np.full(n_sub, float(param))
+        arr = np.asarray(param, dtype=object)
+        if arr.ndim == 1 and arr.shape[0] == len(obs_inds):
+            # list of per-plane values
+            item = arr[ind_obs]
+            if np.isscalar(item):
+                return np.full(n_sub, float(item))
+            return np.asarray(item, dtype=float)
+        # single flat array shared across all planes
+        return np.asarray(param, dtype=float)
+
     if not show:
         matplotlib.use("Agg")
     max_stress_abs = -np.inf
     stress_list = []
     ref = None
     for ind_obs in range(len(obs_inds)):
-        print(obs_inds[ind_obs])
+        #print(obs_inds[ind_obs])
         obs_plane = pd.read_csv(
             str(os.path.join(path_input, "obs_plane%d.csv" % obs_inds[ind_obs])),
             index_col=False,
@@ -53,12 +73,10 @@ def plot_dynamic_coulomb_stress_3d_nt(
         ).to_numpy()
         sub_faults = obs_plane[:, :3]
         sub_fms = obs_plane[:, 3:6]
-        sub_lengths = np.concatenate(
-            [
-                np.ones((len(obs_plane), 1)) * sub_length_strike,
-                np.ones((len(obs_plane), 1)) * sub_length_dip,
-            ], axis=1
-        )
+        n_sub = len(obs_plane)
+        ls = _resolve_lengths(sub_length_strike, ind_obs, n_sub)
+        ld = _resolve_lengths(sub_length_dip, ind_obs, n_sub)
+        sub_lengths = np.stack([ls, ld], axis=1)
         if ref is None:
             ref = sub_faults[0].tolist()
         sub_faults = convert_sub_faults_geo2ned(sub_faults=sub_faults, source_point=ref)
@@ -164,7 +182,7 @@ def plot_dynamic_coulomb_stress_3d_nt(
                 path_output,
                 "results",
                 "dynamic",
-                "cfs_dynamic_3d.png",
+                "cfs_dynamic_3d_%d.png" % nt,
             ),
             dpi=600,
         )
