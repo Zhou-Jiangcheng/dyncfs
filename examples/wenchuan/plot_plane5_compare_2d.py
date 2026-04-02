@@ -11,7 +11,6 @@ import matplotlib.patheffects as path_effects
 
 from dyncfs.cfs_dynamic import *
 
-
 plt.rcParams.update(
     {
         "font.size": 8,
@@ -127,9 +126,9 @@ if __name__ == "__main__":
     fig, axs = plt.subplots(nrows=len(nt_list), ncols=3, figsize=(w, h))
     for i in range(len(nt_list)):
         nt = nt_list[i]
-        ax_cfs = axs[i, 1]  # type:plt.axes
-        ax_cfs_static = axs[i, 0]  # type:plt.axes
-        ax_slip_rate = axs[i, 2]  # type:plt.axes
+        ax_cfs = axs[i, 1]  # type: plt.axes
+        ax_cfs_static = axs[i, 0]  # type: plt.axes
+        ax_slip_rate = axs[i, 2]  # type: plt.axes
 
         sub_stress_dynamic = cfs_dynamic[:, nt].flatten().reshape(-1, num_dip)
         sub_stress_dynamic = zoom(sub_stress_dynamic, [zoom_strike, zoom_dip], order=1)

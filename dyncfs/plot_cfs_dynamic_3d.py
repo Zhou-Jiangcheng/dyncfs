@@ -45,6 +45,7 @@ def plot_dynamic_coulomb_stress_3d_nt(
       - 1-D array/list  : per-subfault lengths shared across all planes (km)
       - list of scalars/arrays, one element per obs plane (km)
     """
+
     def _resolve_lengths(param, ind_obs, n_sub):
         """Return a 1-D ndarray of length n_sub for the given obs plane."""
         if np.isscalar(param):
@@ -65,7 +66,7 @@ def plot_dynamic_coulomb_stress_3d_nt(
     stress_list = []
     ref = None
     for ind_obs in range(len(obs_inds)):
-        #print(obs_inds[ind_obs])
+        # print(obs_inds[ind_obs])
         obs_plane = pd.read_csv(
             str(os.path.join(path_input, "obs_plane%d.csv" % obs_inds[ind_obs])),
             index_col=False,
@@ -128,9 +129,9 @@ def plot_dynamic_coulomb_stress_3d_nt(
         figsize=(20 / 2.54, 20 / 2.54),
         subplot_kw={"projection": "3d"},
     )
-    ax.view_init(elev=elev, azim=azim)  # type:ignore
+    ax.view_init(elev=elev, azim=azim)  # type: ignore
     for ind_obs in range(len(obs_inds)):
-        ax.plot_surface(  # type:ignore
+        ax.plot_surface(  # type: ignore
             stress_list[ind_obs][1],
             stress_list[ind_obs][0],
             -stress_list[ind_obs][2],
@@ -166,10 +167,10 @@ def plot_dynamic_coulomb_stress_3d_nt(
     m.set_clim(tick_range[0], tick_range[1])
     cbar = fig.colorbar(m, cax=cax)
     cbar.set_label("Coulomb Failure Stress Change (MPa)")
-    ax.set_box_aspect([1.0, 1.0, 0.2])  # type:ignore
+    ax.set_box_aspect([1.0, 1.0, 0.2])  # type: ignore
     ax.set_xlabel("W-E (km)")
     ax.set_ylabel("S-N (km)")
-    ax.set_zlabel("D-U (km)")  # type:ignore
+    ax.set_zlabel("D-U (km)")  # type: ignore
     fig.subplots_adjust(left=0, right=0.75, bottom=0, top=1)
     title = "Dynamic Coulomb Failure Stress Change at Time: %.2f s" % float(
         nt * sampling_interval_cfs

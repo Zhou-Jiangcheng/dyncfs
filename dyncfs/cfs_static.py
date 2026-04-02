@@ -335,7 +335,7 @@ def compute_static_cfs(config: CfsConfig):
         receiver_depth_km_arr = np.tile(obs_plane[:, 2], M)  # (M*N,)
         focal_mechanism_arr = np.repeat(source_array[:, 3:6], N, axis=0)  # (M*N, 3)
         area_km_sq_arr = np.repeat(source_array[:, 6] * source_array[:, 7], N)  # (M*N,)
-        slip_m_arr = np.repeat(source_array[:, 8], N)                           # (M*N,)
+        slip_m_arr = np.repeat(source_array[:, 8], N)  # (M*N,)
 
         src_lat_grid = np.repeat(source_array[:, 0], N)
         src_lon_grid = np.repeat(source_array[:, 1], N)
@@ -400,7 +400,7 @@ def compute_static_cfs(config: CfsConfig):
                 desc="Computing static Coulomb Failure Stress change at No.%d plane"
                 % ind_obs,
             ):
-                (n, d, sigma, tau, cfs) = cal_cfs_static_single_point_fix_fm(
+                n, d, sigma, tau, cfs = cal_cfs_static_single_point_fix_fm(
                     obs_fm=obs_plane[i, 3:],
                     stress=stress_tensor_array[i, :],
                     mu_f=config.mu_f,
@@ -430,7 +430,7 @@ def compute_static_cfs(config: CfsConfig):
                 desc="Computing static Coulomb Failure Stress change at No.%d plane (optimal rake)"
                 % ind_obs,
             ):
-                (n, d, sigma, tau, cfs, rake) = cal_cfs_static_single_point_opt_rake(
+                n, d, sigma, tau, cfs, rake = cal_cfs_static_single_point_opt_rake(
                     obs_strike=obs_plane[i, 4],
                     obs_dip=obs_plane[i, 5],
                     stress=stress_tensor_array[i, :],
@@ -467,7 +467,7 @@ def compute_static_cfs(config: CfsConfig):
                 desc="Computing static Coulomb Failure Stress change (OOP) at No.%d plane"
                 % ind_obs,
             ):
-                ([n1, d1, sigma1, tau1], [n2, d2, sigma2, tau2], cfs) = (
+                [n1, d1, sigma1, tau1], [n2, d2, sigma2, tau2], cfs = (
                     cal_cfs_static_single_point_opt_plane(
                         stress=stress_tensor_array[i, :],
                         tectonic_stress_type=config.tectonic_stress_type,
@@ -590,7 +590,7 @@ def compute_static_cfs_fix_depth(
     receiver_depth_km_arr = np.tile(obs_plane[:, 2], M)  # (M*N,)
     focal_mechanism_arr = np.repeat(source_array[:, 3:6], N, axis=0)  # (M*N, 3)
     area_km_sq_arr = np.repeat(source_array[:, 6] * source_array[:, 7], N)  # (M*N,)
-    slip_m_arr = np.repeat(source_array[:, 8], N)                           # (M*N,)
+    slip_m_arr = np.repeat(source_array[:, 8], N)  # (M*N,)
 
     src_lat_grid = np.repeat(source_array[:, 0], N)
     src_lon_grid = np.repeat(source_array[:, 1], N)
@@ -656,7 +656,7 @@ def compute_static_cfs_fix_depth(
             desc="Computing static Coulomb Failure Stress change at %.2f km depth"
             % obs_depth,
         ):
-            (n, d, sigma, tau, cfs) = cal_cfs_static_single_point_fix_fm(
+            n, d, sigma, tau, cfs = cal_cfs_static_single_point_fix_fm(
                 obs_fm=obs_plane[i, 3:],
                 stress=stress_tensor_array[i, :],
                 mu_f=config.mu_f,
@@ -686,7 +686,7 @@ def compute_static_cfs_fix_depth(
             desc="Computing static Coulomb Failure Stress change (OOP) at %.2f km depth"
             % obs_depth,
         ):
-            (n, d, sigma, tau, cfs, rake) = cal_cfs_static_single_point_opt_rake(
+            n, d, sigma, tau, cfs, rake = cal_cfs_static_single_point_opt_rake(
                 obs_strike=obs_plane[i, 4],
                 obs_dip=obs_plane[i, 5],
                 stress=stress_tensor_array[i, :],
@@ -725,7 +725,7 @@ def compute_static_cfs_fix_depth(
             desc="Computing static Coulomb Failure Stress change (OOP) at %.2f km depth"
             % obs_depth,
         ):
-            ([n1, d1, sigma1, tau1], [n2, d2, sigma2, tau2], cfs) = (
+            [n1, d1, sigma1, tau1], [n2, d2, sigma2, tau2], cfs = (
                 cal_cfs_static_single_point_opt_plane(
                     stress=stress_tensor_array[i, :],
                     tectonic_stress_type=config.tectonic_stress_type,

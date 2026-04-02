@@ -2,6 +2,7 @@ import numpy as np
 
 from pygrnwang.signal_process import resample
 
+
 def correct_zero_frequency(data, srate, A0, f_c, tc1, tc2, ratio_interp=0):
     N_data = len(data)
     data = data[tc1:tc2]

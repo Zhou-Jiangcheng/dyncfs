@@ -3,8 +3,8 @@ from dyncfs.cfs_static import *
 if __name__ == "__main__":
     config = CfsConfig()
     config.read_config("wenchuan.ini")
-    config.source_inds = [1,2,3,4,5]
-    config.source_shapes = [[[22,9],[6,9],[8,9],[62,9],[17,6]]]
+    config.source_inds = [1, 2, 3, 4, 5]
+    config.source_shapes = [[[22, 9], [6, 9], [8, 9], [62, 9], [17, 6]]]
     config.layered = False
     config.lam = 25.211679999999994 * 1e9
     config.mu = 31.126160000000002 * 1e9

@@ -12,11 +12,19 @@ from pygrnwang.geo import d2km
 def read_source_array(source_inds, path_input, shift2corner=False):
     source_array = None
     for ind_src in range(len(source_inds)):
-        source_plane = pd.read_csv(
-            str(os.path.join(path_input, "source_plane%d.csv" % source_inds[ind_src])),
-            index_col=False,
-            header=None,
-        ).dropna().to_numpy()
+        source_plane = (
+            pd.read_csv(
+                str(
+                    os.path.join(
+                        path_input, "source_plane%d.csv" % source_inds[ind_src]
+                    )
+                ),
+                index_col=False,
+                header=None,
+            )
+            .dropna()
+            .to_numpy()
+        )
         if shift2corner:
             # source_plane columns:
             # 3: strike(deg), 4: dip(deg)
@@ -140,7 +148,7 @@ def reshape_sub_faults_flat(sub_faults, num_strike, num_dip, zoom_x, zoom_y):
 def group(inp_list, num_in_each_group):
     group_list = []
     for i in range(len(inp_list) // num_in_each_group):
-        group_list.append(inp_list[i * num_in_each_group: (i + 1) * num_in_each_group])
+        group_list.append(inp_list[i * num_in_each_group : (i + 1) * num_in_each_group])
     rest = len(inp_list) % num_in_each_group
     if rest != 0:
         group_list.append(inp_list[-rest:])
@@ -154,7 +162,7 @@ def cal_max_dist_from_2d_points(A: np.ndarray, B: np.ndarray):
     :return: max_distance
     """
     differences = A[:, np.newaxis, :] - B[np.newaxis, :, :]
-    squared_distances = np.sum(differences ** 2, axis=2)
+    squared_distances = np.sum(differences**2, axis=2)
     distances = np.sqrt(squared_distances)
     max_distance = np.max(distances)
     return max_distance
@@ -167,14 +175,20 @@ def cal_min_max_dist_from_points(A: np.ndarray, B: np.ndarray):
     :return: dmin, dmax, (imin, jmin), (imax, jmax)
     """
     diff = A[:, None, :] - B[None, :, :]
-    dist2 = np.einsum('mni,mni->mn', diff, diff)  # 等同于 (diff**2).sum(axis=-1)，更高效
+    dist2 = np.einsum(
+        "mni,mni->mn", diff, diff
+    )  # 等同于 (diff**2).sum(axis=-1)，更高效
     jmin = dist2.argmin()
     jmax = dist2.argmax()
     m_, n_ = dist2.shape
     imin, jmin = divmod(jmin, n_)
     imax, jmax = divmod(jmax, n_)
-    return (np.sqrt(dist2[imin, jmin]), np.sqrt(dist2[imax, jmax]),
-            (imin, jmin), (imax, jmax))
+    return (
+        np.sqrt(dist2[imin, jmin]),
+        np.sqrt(dist2[imax, jmax]),
+        (imin, jmin),
+        (imax, jmax),
+    )
 
 
 def create_rotate_z_mat(gamma):
@@ -255,7 +269,7 @@ def convert_earth_model_nd2inp(path_nd, path_output):
             lines_new.append(temp)
     for i in range(len(lines_new)):
         # print(lines_new[i])
-        lines_new[i] = "  ".join([str(int(i + 1))] + lines_new[i]) + "\n"  # type:ignore
+        lines_new[i] = "  ".join([str(int(i + 1))] + lines_new[i]) + "\n"  # type: ignore
     # with open(path_output, "w") as fw:
     #     fw.writelines(lines_new)
     return lines_new
@@ -272,9 +286,9 @@ def convert_earth_model_nd2nd_without_Q(path_nd, path_output, epsilon=0):
     data = np.array(data)
     for i in range(len(data) - 2):
         if (
-                (data[i, 0] == data[i + 1, 0])
-                and (data[i, 2] != 0)
-                and (data[i + 1, 2] != 0)
+            (data[i, 0] == data[i + 1, 0])
+            and (data[i, 2] != 0)
+            and (data[i + 1, 2] != 0)
         ):
             data[i + 1, 0] = data[i + 1, 0] + epsilon
 
@@ -363,7 +377,7 @@ def ignore_slip_source_array(source_array, slip_thresh):
 def cut_stf_modify_source_array(source_array, cut_stf):
     source_array = source_array.copy()
     sub_stfs = source_array[:, 10:].copy()
-    source_array[:, 10 + cut_stf:] = 0
+    source_array[:, 10 + cut_stf :] = 0
     m0_stf_origin = np.sum(sub_stfs, axis=1)
     m0_stf_cut = np.sum(source_array[:, 10:], axis=1)
     cut_ratio = np.zeros_like(m0_stf_cut)

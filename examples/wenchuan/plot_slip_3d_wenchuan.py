@@ -106,7 +106,7 @@ if __name__ == "__main__":
         figsize=(20 / 2.54, 20 / 2.54),
         subplot_kw={"projection": "3d"},
     )
-    ax.view_init(elev=elev, azim=azim)  # type:ignore
+    ax.view_init(elev=elev, azim=azim)  # type: ignore
     ax.grid(False)
     for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
         axis.pane.fill = False  # 不填充背景
@@ -131,7 +131,7 @@ if __name__ == "__main__":
             and plane_inds[ind_obs] != 100
             and plane_inds[ind_obs] != 200
         ):
-            ax.plot_surface(  # type:ignore
+            ax.plot_surface(  # type: ignore
                 slip_list[ind_obs][1],
                 slip_list[ind_obs][0],
                 -slip_list[ind_obs][2],
@@ -165,7 +165,7 @@ if __name__ == "__main__":
                 path_effects=[pe.withStroke(linewidth=2, foreground="white")],
             )
         if plane_inds[ind_obs] == 5:
-            ax.plot_surface(  # type:ignore
+            ax.plot_surface(  # type: ignore
                 slip_list[ind_obs][1],
                 slip_list[ind_obs][0],
                 -slip_list[ind_obs][2],
@@ -187,7 +187,7 @@ if __name__ == "__main__":
             ax.plot(X[:, 0], Y[:, 0], Z[:, 0], color="k", linewidth=0.5, zorder=10)
             ax.plot(X[:, -1], Y[:, -1], Z[:, -1], color="k", linewidth=0.5, zorder=10)
 
-            ax.plot_surface(  # type:ignore
+            ax.plot_surface(  # type: ignore
                 slip_list[ind_obs][1],
                 slip_list[ind_obs][0],
                 -Z_new,
@@ -274,10 +274,10 @@ if __name__ == "__main__":
     import matplotlib.ticker as mticker
 
     cbar.ax.xaxis.set_major_formatter(mticker.FormatStrFormatter("%.0f"))
-    ax.set_box_aspect([1.0, 1.0, 0.1])  # type:ignore
+    ax.set_box_aspect([1.0, 1.0, 0.1])  # type: ignore
     ax.set_xlabel("Longitude (deg)")
     ax.set_ylabel("Latitude (deg)")
-    ax.set_zlabel("Depth (km)")  # type:ignore
+    ax.set_zlabel("Depth (km)")  # type: ignore
 
     lat0 = ref[0]
     lon0 = ref[1]

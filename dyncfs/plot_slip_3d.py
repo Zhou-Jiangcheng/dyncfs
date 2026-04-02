@@ -100,9 +100,9 @@ def plot_slip_3d(
             max_slip = np.max(sub_slip)
     if color_saturation is None:
         color_saturation = max_slip
-    colors = ['white', 'cyan', 'orange', 'red']
+    colors = ["white", "cyan", "orange", "red"]
 
-    cmap = LinearSegmentedColormap.from_list('custom_cmap', colors)
+    cmap = LinearSegmentedColormap.from_list("custom_cmap", colors)
     norm = Normalize(0, color_saturation)
 
     fig, ax = plt.subplots(
@@ -111,9 +111,9 @@ def plot_slip_3d(
         # figsize=(20 / 2.54, 20 / 2.54),
         subplot_kw={"projection": "3d"},
     )
-    ax.view_init(elev=elev, azim=azim)  # type:ignore
+    ax.view_init(elev=elev, azim=azim)  # type: ignore
     for ind_obs in range(len(plane_inds)):
-        ax.plot_surface(  # type:ignore
+        ax.plot_surface(  # type: ignore
             slip_list[ind_obs][1],
             slip_list[ind_obs][0],
             -slip_list[ind_obs][2],
@@ -149,10 +149,10 @@ def plot_slip_3d(
     m.set_clim(0, color_saturation)
     cbar = fig.colorbar(m, cax=cax)
     cbar.set_label("Slip (m)")
-    ax.set_box_aspect([1.0, 1.0, 0.2])  # type:ignore
+    ax.set_box_aspect([1.0, 1.0, 0.2])  # type: ignore
     ax.set_xlabel("W-E (km)")
     ax.set_ylabel("S-N (km)")
-    ax.set_zlabel("D-U (km)")  # type:ignore
+    ax.set_zlabel("D-U (km)")  # type: ignore
     # fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
     title = "Slip Distribution before Time: %.2f s" % float(
         nt_cut * sampling_interval_stf

@@ -77,11 +77,11 @@ class CfsConfig(object):
         # self.path_bin_qssp: str = None  # type: ignore
 
         # edgrn2
-        self.static_source_depth_range: Union[list[float],np.ndarray] = None  # type: ignore
+        self.static_source_depth_range: Union[list[float], np.ndarray] = None  # type: ignore
         self.static_source_delta_depth: float = None  # type: ignore
-        self.static_dist_range: Union[list[float],np.ndarray] = None  # type: ignore
+        self.static_dist_range: Union[list[float], np.ndarray] = None  # type: ignore
         self.static_delta_dist: float = None  # type: ignore
-        self.static_obs_depth_list: Union[list[float],np.ndarray] = None  # type: ignore
+        self.static_obs_depth_list: Union[list[float], np.ndarray] = None  # type: ignore
         # the following variables will be set by func self.set_default()
         # the value in qseis is the same as here
         self.wavenumber_sampling_rate: int = None  # type: ignore
@@ -145,9 +145,13 @@ class CfsConfig(object):
         else:
             self.path_green_dynamic = os.path.join(self.path_output, "grn_d", "qseis")
         os.makedirs(self.path_green_dynamic, exist_ok=True)
-        self.path_output_results_static = os.path.join(self.path_output, "results", "static")
+        self.path_output_results_static = os.path.join(
+            self.path_output, "results", "static"
+        )
         os.makedirs(self.path_output_results_static, exist_ok=True)
-        self.path_output_results_dynamic = os.path.join(self.path_output, "results", "dynamic")
+        self.path_output_results_dynamic = os.path.join(
+            self.path_output, "results", "dynamic"
+        )
         os.makedirs(self.path_output_results_dynamic, exist_ok=True)
         # self.path_bin_edgrn = os.path.join(
         #     os.path.dirname(os.path.abspath(__file__)),
@@ -174,7 +178,8 @@ class CfsConfig(object):
         self.optimal_type = int(config["input_addition"]["optimal_type"])
         if self.optimal_type == 1 or self.optimal_type == 2:
             self.tectonic_stress_type = int(
-                config["input_addition"]["tectonic_stress_type"].strip())
+                config["input_addition"]["tectonic_stress_type"].strip()
+            )
             self.tectonic_stress = ast.literal_eval(
                 config["input_addition"]["tectonic_stress"].strip()
             )
@@ -182,7 +187,9 @@ class CfsConfig(object):
                 for i in range(6):
                     self.tectonic_stress[i] = self.tectonic_stress[i] * 1e6
             if self.optimal_type == 1 and self.tectonic_stress_type == 2:
-                raise ValueError('Can not only optimal rake when full tectonic_stress is not provided!')
+                raise ValueError(
+                    "Can not only optimal rake when full tectonic_stress is not provided!"
+                )
         self.mu_f = float(config["input_addition"]["mu_f"])
         self.B_pore = float(config["input_addition"]["B_pore"])
         # self.calc_rup2unrup = config["input_addition"].getboolean("calc_rup2unrup")
@@ -207,10 +214,10 @@ class CfsConfig(object):
         self.source_shapes = ast.literal_eval(
             config["input_addition"]["source_shapes"].strip()
         )
-        self.source_ref = ast.literal_eval(config["input_addition"]["source_ref"].strip())
-        self.obs_inds = ast.literal_eval(
-            config["input_addition"]["obs_inds"].strip()
+        self.source_ref = ast.literal_eval(
+            config["input_addition"]["source_ref"].strip()
         )
+        self.obs_inds = ast.literal_eval(config["input_addition"]["obs_inds"].strip())
         self.obs_shapes = ast.literal_eval(
             config["input_addition"]["obs_shapes"].strip()
         )
@@ -224,7 +231,7 @@ class CfsConfig(object):
 
         # [fixed_obs_depth]
         self.fixed_obs_depth = float(
-            config['fixed_obs_depth']['fixed_obs_depth'].strip()
+            config["fixed_obs_depth"]["fixed_obs_depth"].strip()
         )
         self.obs_lat_range = ast.literal_eval(
             config["fixed_obs_depth"]["obs_lat_range"].strip()
@@ -239,15 +246,19 @@ class CfsConfig(object):
         self.grn_source_depth_range = ast.literal_eval(
             config["grn_region"]["grn_source_depth_range"].strip()
         )
-        self.grn_delta_source_depth = float(config["grn_region"]["grn_delta_source_depth"])
+        self.grn_delta_source_depth = float(
+            config["grn_region"]["grn_delta_source_depth"]
+        )
         self.grn_obs_depth_range = ast.literal_eval(
             config["grn_region"]["grn_obs_depth_range"].strip()
         )
         self.grn_delta_obs_depth = float(config["grn_region"]["grn_delta_obs_depth"])
-        self.grn_dist_unit = str(config['grn_region']['grn_dist_unit'].strip())
-        self.grn_dist_range = ast.literal_eval(config["grn_region"]["grn_dist_range"].strip())
+        self.grn_dist_unit = str(config["grn_region"]["grn_dist_unit"].strip())
+        self.grn_dist_range = ast.literal_eval(
+            config["grn_region"]["grn_dist_range"].strip()
+        )
         self.grn_delta_dist = float(config["grn_region"]["grn_delta_dist"])
-        if self.grn_dist_unit == 'deg':
+        if self.grn_dist_unit == "deg":
             self.grn_dist_range[0] = self.grn_dist_range[0] * d2km
             self.grn_dist_range[1] = self.grn_dist_range[1] * d2km
             self.grn_delta_dist = self.grn_delta_dist * d2km
@@ -326,16 +337,17 @@ class CfsConfig(object):
             self.free_surface = config["dynamic"].getboolean("free_surface")
             self.wavelet_duration = int(config["dynamic"]["wavelet_duration"])
             self.output_observables = ast.literal_eval(
-                config["dynamic"]["output_observables"])
+                config["dynamic"]["output_observables"]
+            )
 
             # qseis2025
             self.slowness_int_algorithm = int(
                 config["dynamic"]["slowness_int_algorithm"]
             )
             self.eps_estimate_wavenumber = float(
-                config["dynamic"]["eps_estimate_wavenumber"])
-            self.source_radius_ratio = float(
-                config["dynamic"]["source_radius_ratio"])
+                config["dynamic"]["eps_estimate_wavenumber"]
+            )
+            self.source_radius_ratio = float(config["dynamic"]["source_radius_ratio"])
             self.slowness_window = ast.literal_eval(
                 config["dynamic"]["slowness_window"]
             )
@@ -344,13 +356,17 @@ class CfsConfig(object):
             self.time_reduction_velo = float(config["dynamic"]["time_reduction_velo"])
 
             self.wavelet_type = int(config["dynamic"]["wavelet_type"])
-            self.flat_earth_transform = config["dynamic"].getboolean("flat_earth_transform")
+            self.flat_earth_transform = config["dynamic"].getboolean(
+                "flat_earth_transform"
+            )
 
             # qssp2020
             self.time_reduction = float(config["dynamic"]["time_reduction"])
             self.spec_time_window = self.time_window
             self.source_radius = float(config["dynamic"]["source_radius"])
-            self.turning_point_filter = bool2int(config['dynamic'].getboolean('turning_point_filter'))
+            self.turning_point_filter = bool2int(
+                config["dynamic"].getboolean("turning_point_filter")
+            )
             self.turning_point_d1 = int(config["dynamic"]["turning_point_d1"])
             self.turning_point_d2 = int(config["dynamic"]["turning_point_d2"])
             self.gravity_fc = float(config["dynamic"]["gravity_fc"])
@@ -370,8 +386,7 @@ class CfsConfig(object):
             source_plane = pd.read_csv(
                 str(
                     os.path.join(
-                        self.path_input,
-                        f"source_plane{self.source_inds[ind_src]}.csv"
+                        self.path_input, f"source_plane{self.source_inds[ind_src]}.csv"
                     )
                 ),
                 index_col=False,
@@ -504,7 +519,6 @@ class CfsConfig(object):
             deep (bool): If True, returns a deep copy; otherwise a shallow copy.
         """
         return copy.deepcopy(self) if deep else copy.copy(self)
-
 
 
 if __name__ == "__main__":

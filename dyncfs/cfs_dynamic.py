@@ -206,7 +206,7 @@ def synthesize_dynamic_stress(
                 output_type="stress",
                 model_name=green_info["path_nd_without_Q"],
                 green_info=green_info,
-                interpolate_type=1
+                interpolate_type=1,
             )
         else:
             (
@@ -233,7 +233,7 @@ def synthesize_dynamic_stress(
                 output_type="stress",
                 model_name=green_info["path_nd_without_Q"],
                 green_info=green_info,
-                interpolate_type=1
+                interpolate_type=1,
             )
         tp_i = tpts_table["p_onset"]
         tp_ic = max(1, round((tp_i - 1) * srate_cfs))

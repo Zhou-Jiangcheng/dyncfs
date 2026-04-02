@@ -19,6 +19,7 @@ plt.rcParams.update(
     }
 )
 
+
 def plot_ax(ax: plt.Axes, sub_stress: np.ndarray, focal_mechanism=None):
     # 直接用 imshow：速度远快于 pcolormesh
     C = sub_stress / 1e6  # MPa
@@ -27,16 +28,18 @@ def plot_ax(ax: plt.Axes, sub_stress: np.ndarray, focal_mechanism=None):
     # extent 设为像素中心落在 0..N-1，便于继续使用你现有的 xtick_pos/ytick_pos
     im = ax.imshow(
         C,
-        origin="lower",                # y=0 在底部，纬度向上增
+        origin="lower",  # y=0 在底部，纬度向上增
         cmap=cmap,
         norm=norm,
-        interpolation="nearest",       # 最快；要平滑可用 'bilinear'
-        extent=[-0.5, Ny-0.5, -0.5, Nx-0.5],
+        interpolation="nearest",  # 最快；要平滑可用 'bilinear'
+        extent=[-0.5, Ny - 0.5, -0.5, Nx - 0.5],
         aspect="equal",
     )
 
     delta_tick = 2  # deg
-    if (obs_lon_range[1] - obs_lon_range[0]) <= 0 or (obs_lat_range[1] - obs_lat_range[0]) <= 0:
+    if (obs_lon_range[1] - obs_lon_range[0]) <= 0 or (
+        obs_lat_range[1] - obs_lat_range[0]
+    ) <= 0:
         print("Warning: Invalid coordinate ranges")
         return ax
 
@@ -59,8 +62,11 @@ def plot_ax(ax: plt.Axes, sub_stress: np.ndarray, focal_mechanism=None):
     # —— 以下保持你的断层可视化逻辑不变，仅小幅优化 —— #
     for ind_src in range(len(config.source_inds)):
         source_plane = pd.read_csv(
-            os.path.join(config.path_input, f"source_plane{config.source_inds[ind_src]}.csv"),
-            index_col=False, header=None
+            os.path.join(
+                config.path_input, f"source_plane{config.source_inds[ind_src]}.csv"
+            ),
+            index_col=False,
+            header=None,
         ).to_numpy()
 
         strike_rad = np.deg2rad(source_plane[:, 3])
@@ -68,10 +74,11 @@ def plot_ax(ax: plt.Axes, sub_stress: np.ndarray, focal_mechanism=None):
         Ls = source_plane[:, 6]
         Ld = source_plane[:, 7]
 
-        s_x = np.cos(strike_rad); s_y = np.sin(strike_rad)
+        s_x = np.cos(strike_rad)
+        s_y = np.sin(strike_rad)
         d_x = -np.sin(strike_rad) * np.cos(dip_rad)
-        d_y =  np.cos(strike_rad) * np.cos(dip_rad)
-        d_z =  np.sin(dip_rad)
+        d_y = np.cos(strike_rad) * np.cos(dip_rad)
+        d_z = np.sin(dip_rad)
 
         shift_x = -0.5 * (s_x * Ls + d_x * Ld)
         shift_y = -0.5 * (s_y * Ls + d_y * Ld)
@@ -111,7 +118,9 @@ def plot_ax(ax: plt.Axes, sub_stress: np.ndarray, focal_mechanism=None):
         s_plot_y = s_plot_y / np.where(s_norm == 0, 1, s_norm)
 
         groups = {}
-        for k, xx1, yy1, xx2, yy2, spx, spy in zip(row_id, x1, y1, x2, y2, s_plot_x, s_plot_y):
+        for k, xx1, yy1, xx2, yy2, spx, spy in zip(
+            row_id, x1, y1, x2, y2, s_plot_x, s_plot_y
+        ):
             groups.setdefault(k, []).append((xx1, yy1, xx2, yy2, spx, spy))
 
         for _, segs in groups.items():
@@ -127,32 +136,40 @@ def plot_ax(ax: plt.Axes, sub_stress: np.ndarray, focal_mechanism=None):
             xs, ys = [], []
             for _, xx1, yy1, xx2, yy2 in oriented:
                 if not xs:
-                    xs.extend([xx1, xx2]); ys.extend([yy1, yy2])
+                    xs.extend([xx1, xx2])
+                    ys.extend([yy1, yy2])
                 else:
-                    xs.append(xx2); ys.append(yy2)
+                    xs.append(xx2)
+                    ys.append(yy2)
 
             ax.plot(xs, ys, "-", linewidth=4, color="white", alpha=1, zorder=300)
             ax.plot(xs, ys, "-", linewidth=2.2, color="black", alpha=1, zorder=300)
 
     if focal_mechanism is not None:
-        xlim = ax.get_xlim(); ylim = ax.get_ylim()
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
         x_pos = xlim[1] - (xlim[1] - xlim[0]) * 0.2
         y_pos = ylim[0] + (ylim[1] - ylim[0]) * 0.2
         width = (xlim[1] - xlim[0]) * 0.15
 
         bb = beach(
-            focal_mechanism, xy=(x_pos, y_pos), width=width,
-            linewidth=1, facecolor="black", edgecolor="black"
+            focal_mechanism,
+            xy=(x_pos, y_pos),
+            width=width,
+            linewidth=1,
+            facecolor="black",
+            edgecolor="black",
         )
         ax.add_collection(bb)
 
     return ax
 
+
 if __name__ == "__main__":
     config = CfsConfig()
     config.read_config("wenchuan.ini")
-    config.source_inds = [1,2,3,4,5]
-    config.source_shapes = [[22,9],[6,9],[8,9],[62,9],[17,6]]
+    config.source_inds = [1, 2, 3, 4, 5]
+    config.source_shapes = [[22, 9], [6, 9], [8, 9], [62, 9], [17, 6]]
 
     obs_depth = 15
     sub_stress_half = pd.read_csv(

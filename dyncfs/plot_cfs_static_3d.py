@@ -23,19 +23,19 @@ plt.rcParams.update(
 
 
 def plot_staic_coulomb_stress_3d(
-        elev,
-        azim,
-        path_input,
-        path_output,
-        obs_inds,
-        obs_shapes,
-        sub_length_strike,
-        sub_length_dip,
-        color_saturation=None,
-        # zoom_x=1,
-        # zoom_y=1,
-        show=True,
-        save=True,
+    elev,
+    azim,
+    path_input,
+    path_output,
+    obs_inds,
+    obs_shapes,
+    sub_length_strike,
+    sub_length_dip,
+    color_saturation=None,
+    # zoom_x=1,
+    # zoom_y=1,
+    show=True,
+    save=True,
 ):
     if not show:
         matplotlib.use("Agg")
@@ -54,7 +54,8 @@ def plot_staic_coulomb_stress_3d(
             [
                 np.ones((len(obs_plane), 1)) * sub_length_strike,
                 np.ones((len(obs_plane), 1)) * sub_length_dip,
-            ], axis=1
+            ],
+            axis=1,
         )
         if ref is None:
             ref = sub_faults[0].tolist()
@@ -106,9 +107,9 @@ def plot_staic_coulomb_stress_3d(
         figsize=(20 / 2.54, 20 / 2.54),
         subplot_kw={"projection": "3d"},
     )
-    ax.view_init(elev=elev, azim=azim)  # type:ignore
+    ax.view_init(elev=elev, azim=azim)  # type: ignore
     for ind_obs in range(len(obs_inds)):
-        ax.plot_surface(  # type:ignore
+        ax.plot_surface(  # type: ignore
             stress_list[ind_obs][1],
             stress_list[ind_obs][0],
             -stress_list[ind_obs][2],
@@ -144,10 +145,10 @@ def plot_staic_coulomb_stress_3d(
     m.set_clim(tick_range[0], tick_range[1])
     cbar = fig.colorbar(m, cax=cax)
     cbar.set_label("Coulomb Failure Stress Change (MPa)")
-    ax.set_box_aspect([1.0, 1.0, 0.2])  # type:ignore
+    ax.set_box_aspect([1.0, 1.0, 0.2])  # type: ignore
     ax.set_xlabel("W-E (km)")
     ax.set_ylabel("S-N (km)")
-    ax.set_zlabel("D-U (km)")  # type:ignore
+    ax.set_zlabel("D-U (km)")  # type: ignore
     fig.subplots_adjust(left=0, right=0.75, bottom=0, top=1)
     title = "Static Coulomb Failure Stress Change"
     fig.suptitle(title)
