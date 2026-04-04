@@ -36,8 +36,8 @@ def read_cfs_static_along_time(config: CfsConfig):
 
 
 if __name__ == "__main__":
-    path_input = "input"
-    path_output = "output/results/dynamic"
+    path_input = "/e/dyncfs_data/wenchuan/input"
+    path_output = "/e/dyncfs_data/wenchuan/output/results/dynamic"
 
     num_dip = 6
     zoom_strike, zoom_dip = 1, 1

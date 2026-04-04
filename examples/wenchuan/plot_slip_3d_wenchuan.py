@@ -8,7 +8,7 @@ from matplotlib.ticker import FuncFormatter
 import matplotlib.patheffects as pe
 
 from dyncfs.utils import reshape_sub_faults
-from pygrnwang.geo import convert_sub_faults_geo2ned
+from pygrnwang.geo import convert_sub_faults_geo2ned, d2km
 
 plt.rcParams.update(
     {
@@ -17,7 +17,7 @@ plt.rcParams.update(
 )
 
 if __name__ == "__main__":
-    path_input = "./input"
+    path_input = "/e/dyncfs_data/wenchuan/input"
     elev = 20
     azim = 170
     nt_cut = -1
@@ -281,7 +281,6 @@ if __name__ == "__main__":
 
     lat0 = ref[0]
     lon0 = ref[1]
-    from dyncfs.geo import d2km
 
     def x2lon(x, pos):
         # x 为东向位移（km），换算为经度
