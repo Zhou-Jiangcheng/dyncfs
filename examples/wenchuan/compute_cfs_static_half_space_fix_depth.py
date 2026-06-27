@@ -2,7 +2,7 @@ from dyncfs.cfs_static import *
 
 if __name__ == "__main__":
     config = CfsConfig()
-    config.read_config("wenchuan.ini")
+    config.read_config("/home/zjc/python_works/dyncfs/examples/wenchuan/wenchuan.ini")
     config.source_inds = [1, 2, 3, 4, 5]
     config.source_shapes = [[[22, 9], [6, 9], [8, 9], [62, 9], [17, 6]]]
     config.layered = False
@@ -10,8 +10,8 @@ if __name__ == "__main__":
     config.mu = 31.126160000000002 * 1e9
 
     config.check_finished = False
-    config.obs_delta_lat = 0.01
-    config.obs_delta_lon = 0.01
+    config.obs_delta_lat = 0.05
+    config.obs_delta_lon = 0.05
     compute_static_cfs_fix_depth(
         config=config,
         obs_depth=15,

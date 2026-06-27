@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from scipy import signal
 from tqdm import tqdm
-from obspy.geodetics import gps2dist_azimuth
+
 from pygrnwang.create_qssp2020_bulk import (
     pre_process_qssp2020,
     create_grnlib_qssp2020_parallel,
@@ -38,9 +38,8 @@ from .utils import (
     bool2int,
     ignore_slip_source_array,
     cut_stf_modify_source_array,
+    spherical_dist_azimuth_km
 )
-
-d2km = 111.19492664455874
 
 
 def create_dynamic_lib(config: CfsConfig):
@@ -160,7 +159,7 @@ def synthesize_dynamic_stress(
     sub_m0s = source_array[:, 9]
     sub_stfs = source_array[:, 10:]
     tp_min = np.inf
-    dist_m_max = -np.inf
+    dist_km_max = -np.inf
     for i in range(sub_faults_source.shape[0]):
         # print(i, sub_faults_source[i])
         sub_stf = resample(
@@ -174,7 +173,7 @@ def synthesize_dynamic_stress(
             sub_stf = sub_stf / m0_sub_stf * sub_m0s[i]
         else:
             continue
-        dist_in_m, az_in_deg, baz_in_deg = gps2dist_azimuth(
+        dist_in_km, az_in_deg = spherical_dist_azimuth_km(
             lat1=sub_faults_source[i][0],
             lon1=sub_faults_source[i][1],
             lat2=obs_array_single_point[0],
@@ -195,7 +194,7 @@ def synthesize_dynamic_stress(
                 event_depth_km=sub_faults_source[i, 2],
                 receiver_depth_km=obs_array_single_point[2],
                 az_deg=az_in_deg,
-                dist_km=dist_in_m / 1e3,
+                dist_km=dist_in_km,
                 focal_mechanism=focal_mechanism,
                 srate=srate_cfs,
                 before_p=None,
@@ -222,7 +221,7 @@ def synthesize_dynamic_stress(
                 event_depth_km=sub_faults_source[i, 2],
                 receiver_depth_km=obs_array_single_point[2],
                 az_deg=az_in_deg,
-                dist_km=dist_in_m / 1e3,
+                dist_km=dist_in_km,
                 focal_mechanism=focal_mechanism,
                 srate=srate_cfs,
                 before_p=None,
@@ -249,8 +248,8 @@ def synthesize_dynamic_stress(
         stress_enz = stress_enz + stress_enz_1source
         if tp_min > tp_i:
             tp_min = tp_i
-        if dist_m_max < dist_in_m:
-            dist_m_max = dist_in_m
+        if dist_km_max < dist_in_km:
+            dist_km_max = dist_in_km
 
     if use_spherical:
         wavelet_duration = round(green_info["source_duration"] / srate_cfs)
@@ -259,7 +258,7 @@ def synthesize_dynamic_stress(
     if (static_stress is not None) and (max_slowness is not None):
         tc1 = max(1, round(tp_min * srate_cfs - 1))
         tc2 = round(
-            dist_m_max / 1e3 * max_slowness
+            dist_km_max * max_slowness
             + 1.5 * wavelet_duration
             + sub_stfs.shape[1] * srate_cfs / srate_stf
         )
@@ -282,7 +281,7 @@ def synthesize_dynamic_stress(
             stress_enz[:, i_cor] = np.sum(stress_rate_enz[:, i_cor]) / srate_cfs
     elif max_slowness is not None:
         tc2 = round(
-            dist_m_max / 1e3 * max_slowness
+            dist_km_max * max_slowness
             + 1.5 * wavelet_duration
             + sub_stfs.shape[1] * srate_cfs / srate_stf
         )

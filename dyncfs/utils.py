@@ -1,12 +1,97 @@
 import os
-import platform
-import subprocess
 
 import numpy as np
 import pandas as pd
 from scipy.ndimage import zoom
 
 from pygrnwang.geo import d2km
+
+
+def spherical_dist_azimuth_km(lat1, lon1, lat2, lon2, r_earth_km=6371):
+    lat1_rad = np.deg2rad(lat1)
+    lon1_rad = np.deg2rad(lon1)
+    lat2_rad = np.deg2rad(lat2)
+    lon2_rad = np.deg2rad(lon2)
+
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    sin_half_dlat = np.sin(dlat / 2.0)
+    sin_half_dlon = np.sin(dlon / 2.0)
+    a = (
+        sin_half_dlat * sin_half_dlat
+        + np.cos(lat1_rad) * np.cos(lat2_rad) * sin_half_dlon * sin_half_dlon
+    )
+    central_angle = 2.0 * np.arctan2(np.sqrt(a), np.sqrt(np.maximum(0.0, 1.0 - a)))
+    dist_km = r_earth_km * central_angle
+
+    y = np.sin(dlon) * np.cos(lat2_rad)
+    x = np.cos(lat1_rad) * np.sin(lat2_rad) - np.sin(lat1_rad) * np.cos(
+        lat2_rad
+    ) * np.cos(dlon)
+    az_deg = (np.rad2deg(np.arctan2(y, x)) + 360.0) % 360.0
+    return dist_km, az_deg
+
+
+def pairwise_spherical_dist_azimuth_km(
+    src_lat,
+    src_lon,
+    obs_lat,
+    obs_lon,
+    r_earth_km=6371,
+    max_pairs=5_000_000,
+):
+    src_lat = np.asarray(src_lat)
+    src_lon = np.asarray(src_lon)
+    obs_lat = np.asarray(obs_lat)
+    obs_lon = np.asarray(obs_lon)
+
+    M = len(src_lat)
+    N = len(obs_lat)
+    max_pairs = int(max_pairs)
+    if max_pairs <= 0:
+        raise ValueError("max_pairs must be positive")
+    obs_chunk_size = max(1, min(N, max_pairs // max(M, 1)))
+
+    dist_km_arr = np.empty(M * N, dtype=np.float64)
+    az_deg_arr = np.empty(M * N, dtype=np.float64)
+    dist_km_grid = dist_km_arr.reshape(M, N)
+    az_deg_grid = az_deg_arr.reshape(M, N)
+
+    src_lat_rad = np.deg2rad(src_lat)[:, None]
+    src_lon_rad = np.deg2rad(src_lon)[:, None]
+    obs_lat_rad = np.deg2rad(obs_lat)
+    obs_lon_rad = np.deg2rad(obs_lon)
+    cos_src_lat = np.cos(src_lat_rad)
+    sin_src_lat = np.sin(src_lat_rad)
+
+    for obs_start in range(0, N, obs_chunk_size):
+        obs_end = min(obs_start + obs_chunk_size, N)
+        lat2_rad = obs_lat_rad[None, obs_start:obs_end]
+        lon2_rad = obs_lon_rad[None, obs_start:obs_end]
+
+        dlat = lat2_rad - src_lat_rad
+        dlon = lon2_rad - src_lon_rad
+        sin_half_dlat = np.sin(dlat / 2.0)
+        sin_half_dlon = np.sin(dlon / 2.0)
+        cos_lat2 = np.cos(lat2_rad)
+        sin_lat2 = np.sin(lat2_rad)
+
+        a = (
+            sin_half_dlat * sin_half_dlat
+            + cos_src_lat * cos_lat2 * sin_half_dlon * sin_half_dlon
+        )
+        central_angle = 2.0 * np.arctan2(
+            np.sqrt(a), np.sqrt(np.maximum(0.0, 1.0 - a))
+        )
+        dist_km_grid[:, obs_start:obs_end] = r_earth_km * central_angle
+
+        y = np.sin(dlon) * cos_lat2
+        x = cos_src_lat * sin_lat2 - sin_src_lat * cos_lat2 * np.cos(dlon)
+        az_deg_grid[:, obs_start:obs_end] = (
+            np.rad2deg(np.arctan2(y, x)) + 360.0
+        ) % 360.0
+
+    return dist_km_arr, az_deg_arr
 
 
 def read_source_array(source_inds, path_input, shift2corner=False):

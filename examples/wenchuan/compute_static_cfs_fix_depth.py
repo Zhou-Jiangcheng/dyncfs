@@ -12,9 +12,9 @@ if __name__ == "__main__":
     config.static_obs_depth_list = [_ for _ in range(31)]
     config.check_finished = False
 
-    create_static_lib(config)
-    config.obs_delta_lat = 0.01
-    config.obs_delta_lon = 0.01
+    #create_static_lib(config)
+    config.obs_delta_lat = 0.05
+    config.obs_delta_lon = 0.05
     compute_static_cfs_fix_depth(
         config=config,
         obs_depth=15,

@@ -8,7 +8,6 @@ from multiprocessing import get_context
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from obspy.geodetics import gps2dist_azimuth
 
 from pygrnwang.focal_mechanism import (
     plane2nd,
@@ -31,6 +30,7 @@ from .utils import (
     read_source_array,
     ignore_slip_source_array,
     cut_stf_modify_source_array,
+    pairwise_spherical_dist_azimuth_km,
 )
 
 
@@ -337,19 +337,12 @@ def compute_static_cfs(config: CfsConfig):
         area_km_sq_arr = np.repeat(source_array[:, 6] * source_array[:, 7], N)  # (M*N,)
         slip_m_arr = np.repeat(source_array[:, 8], N)  # (M*N,)
 
-        src_lat_grid = np.repeat(source_array[:, 0], N)
-        src_lon_grid = np.repeat(source_array[:, 1], N)
-        obs_lat_grid = np.tile(obs_plane[:, 0], M)
-        obs_lon_grid = np.tile(obs_plane[:, 1], M)
-
-        _gps2dist_vec = np.vectorize(gps2dist_azimuth)
-        dist_m_arr, az_deg_arr, _ = _gps2dist_vec(
-            lat1=src_lat_grid,
-            lon1=src_lon_grid,
-            lat2=obs_lat_grid,
-            lon2=obs_lon_grid,
+        dist_km_arr, az_deg_arr = pairwise_spherical_dist_azimuth_km(
+            src_lat=source_array[:, 0],
+            src_lon=source_array[:, 1],
+            obs_lat=obs_plane[:, 0],
+            obs_lon=obs_plane[:, 1],
         )
-        dist_km_arr = dist_m_arr / 1000.0
 
         st_mn_bulk = seek_edcmp2_bulk(
             path_green=config.path_green_static,
@@ -592,19 +585,12 @@ def compute_static_cfs_fix_depth(
     area_km_sq_arr = np.repeat(source_array[:, 6] * source_array[:, 7], N)  # (M*N,)
     slip_m_arr = np.repeat(source_array[:, 8], N)  # (M*N,)
 
-    src_lat_grid = np.repeat(source_array[:, 0], N)
-    src_lon_grid = np.repeat(source_array[:, 1], N)
-    obs_lat_grid = np.tile(obs_plane[:, 0], M)
-    obs_lon_grid = np.tile(obs_plane[:, 1], M)
-
-    _gps2dist_vec = np.vectorize(gps2dist_azimuth)
-    dist_m_arr, az_deg_arr, _ = _gps2dist_vec(
-        lat1=src_lat_grid,
-        lon1=src_lon_grid,
-        lat2=obs_lat_grid,
-        lon2=obs_lon_grid,
+    dist_km_arr, az_deg_arr = pairwise_spherical_dist_azimuth_km(
+        src_lat=source_array[:, 0],
+        src_lon=source_array[:, 1],
+        obs_lat=obs_plane[:, 0],
+        obs_lon=obs_plane[:, 1],
     )
-    dist_km_arr = dist_m_arr / 1000.0
 
     print("reading stress tensors")
     st_mn_bulk = seek_edcmp2_bulk(

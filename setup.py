@@ -1,5 +1,6 @@
 import os
 import platform
+import shutil
 import sys
 from setuptools import setup
 from setuptools.command.build_py import build_py as _build_py
@@ -31,6 +32,13 @@ def install_binaries(target_exec_dir):
     else:
         env_bin_dir = os.path.join(sys.exec_prefix, "bin")
     print(f"[dyncfs] Target environment bin: {env_bin_dir}")
+
+    # Check whether Java is available on PATH
+    if shutil.which("java") is None:
+        print(
+            "[dyncfs] Warning: Java not found on PATH. "
+            "obspy will be used to compute arrival times."
+        )
 
 
 # --- Custom command classes ---
