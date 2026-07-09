@@ -102,7 +102,7 @@ def create_dynamic_lib(config: CfsConfig):
             time_reduction_velo=config.time_reduction_velo,
             wavenumber_sampling_rate=config.wavenumber_sampling_rate,
             anti_alias=config.anti_alias,
-            free_surface=config.free_surface,
+            free_surface=1-bool2int(config.free_surface),
             wavelet_duration=config.wavelet_duration,
             wavelet_type=config.wavelet_type,
             flat_earth_transform=config.flat_earth_transform,
