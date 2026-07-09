@@ -140,6 +140,7 @@ class CfsConfig(object):
         self.path_nd = os.path.join(self.path_input, "model.nd")
         self.path_green_static = os.path.join(self.path_output, "grn_s")
         os.makedirs(self.path_green_static, exist_ok=True)
+        self.use_spherical = config["input_addition"].getboolean("use_spherical")
         if self.use_spherical:
             self.path_green_dynamic = os.path.join(self.path_output, "grn_d", "qssp")
         else:
@@ -225,7 +226,6 @@ class CfsConfig(object):
         self.earth_model_layer_num = int(
             config["input_addition"]["earth_model_layer_num"]
         )
-        self.use_spherical = config["input_addition"].getboolean("use_spherical")
         self.cut_stf = int(config["input_addition"]["cut_stf"].strip())
         self.slip_thresh = float(config["input_addition"]["slip_thresh"])
 

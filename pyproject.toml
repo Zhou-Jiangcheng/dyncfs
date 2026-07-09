@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dyncfs"
-version = "2.1.4"
+version = "2.1.5"
 description = "A Python library for computing Coulomb Failure Stress Change."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Zhou Jiangcheng", email = "zhou-jiangcheng@outlook.com" }]
 dependencies = [
-    "pygrnwang>=2.1.3",
+    "pygrnwang>=2.1.4",
     "matplotlib>=3.9.2",
 ]
 

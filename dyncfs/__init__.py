@@ -5,4 +5,4 @@ A Python library for computing Coulomb Failure Stress Change in the layered Eart
 
 """
 
-__version__ = "2.1.4"
+__version__ = "2.1.5"
