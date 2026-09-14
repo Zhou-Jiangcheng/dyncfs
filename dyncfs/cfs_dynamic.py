@@ -1238,7 +1238,7 @@ def prepare_compute_cfs_fix_depth(
         source_array = ignore_slip_source_array(source_array, config.slip_thresh)
     if config.cut_stf > 0:
         source_array = cut_stf_modify_source_array(source_array, config.cut_stf)
-    if config.optimal_type == 0 and receiver_mechanism is None:
+    if config.optimal_type in (0, 1) and receiver_mechanism is None:
         mt_mean = np.zeros(6)
         for i in range(len(source_array)):
             mt_i = check_convert_fm(source_array[i, 3:6])
@@ -1461,7 +1461,7 @@ def compute_dynamic_cfs_fix_depth_sequential(
         source_array = ignore_slip_source_array(source_array, config.slip_thresh)
     if config.cut_stf > 0:
         source_array = cut_stf_modify_source_array(source_array, config.cut_stf)
-    if config.optimal_type and receiver_mechanism is None:
+    if config.optimal_type in (0, 1) and receiver_mechanism is None:
         mt_mean = np.zeros(6)
         for i in range(len(source_array)):
             mt_i = check_convert_fm(source_array[i, 3:6])
@@ -1490,10 +1490,13 @@ def compute_dynamic_cfs_fix_depth_sequential(
         for j in range(Ny):
             ind = j + i * Ny
             obs_plane[ind, :2] = np.array([lat_array[i], lon_array[j]])
-    if config.optimal_type:
+    if config.optimal_type == 0:
         obs_plane[:, 3] = obs_plane[:, 3] + receiver_mechanism[0]
         obs_plane[:, 4] = obs_plane[:, 4] + receiver_mechanism[1]
         obs_plane[:, 5] = obs_plane[:, 5] + receiver_mechanism[2]
+    elif config.optimal_type == 1:
+        obs_plane[:, 3] = obs_plane[:, 3] + receiver_mechanism[0]
+        obs_plane[:, 4] = obs_plane[:, 4] + receiver_mechanism[1]
 
     for i in tqdm(
         range(len(obs_plane)),
@@ -1521,6 +1524,7 @@ def compute_dynamic_cfs_fix_depth_sequential(
                 tectonic_stress=config.tectonic_stress,
                 srate_stf=1 / config.sampling_interval_stf,
                 mu_f=config.mu_f,
+                B_pore=config.B_pore,
                 max_slowness=config.max_slowness,
                 green_info=green_info,
                 path_results_each=path_results_each,
@@ -1536,6 +1540,7 @@ def compute_dynamic_cfs_fix_depth_sequential(
                 tectonic_stress=config.tectonic_stress,
                 srate_stf=1 / config.sampling_interval_stf,
                 mu_f=config.mu_f,
+                B_pore=config.B_pore,
                 max_slowness=config.max_slowness,
                 green_info=green_info,
                 path_results_each=path_results_each,
