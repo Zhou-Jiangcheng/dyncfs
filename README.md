@@ -67,7 +67,7 @@ if __name__ == "__main__":
     config = CfsConfig()
     config.read_config("example.ini")
     create_static_lib(config)
-    compute_static_cfs_parallel(config)
+    compute_static_cfs(config)
 ```
 
 ```
