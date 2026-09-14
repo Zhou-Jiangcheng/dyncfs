@@ -5,6 +5,7 @@ import pickle
 import json
 import multiprocessing as mp
 from multiprocessing import get_context
+import warnings
 
 # import warnings
 # warnings.filterwarnings('error', category=RuntimeWarning)
@@ -39,6 +40,7 @@ from .utils import (
     ignore_slip_source_array,
     cut_stf_modify_source_array,
     spherical_dist_azimuth_km,
+    static_stress_ned2enz,
     cal_grid_num,
 )
 
@@ -675,6 +677,7 @@ def cal_cfs_dynamic_single_point_oop(
     green_info: dict = None,
     path_results_each: str = None,
     use_spherical: bool = False,
+    static_stress=None,
     check_finish: bool = False,
 ):
     """
@@ -688,6 +691,7 @@ def cal_cfs_dynamic_single_point_oop(
     :param obs_array_single_point: 1D numpy array,
                         [lat(deg), lon(deg), depth(km)]
     :param srate_stf: Sampling rate of stf in Hz.
+    :param static_stress: Static stress tensor used for correcting zero-frequency values.
     :param tectonic_stress_type: 1 for stress, 2 for orientations
     :param tectonic_stress:
             When tectonic_stress_type=1, tectonic stress tensor in NED axis,
@@ -743,6 +747,7 @@ def cal_cfs_dynamic_single_point_oop(
             source_array=source_array,
             obs_array_single_point=obs_array_single_point,
             srate_stf=srate_stf,
+            static_stress=static_stress,
             max_slowness=max_slowness,
             green_info=green_info,
             use_spherical=use_spherical,
@@ -886,6 +891,34 @@ def cal_cfs_dynamic_single_point_oop(
     )
 
 
+def load_static_stress_enz(config: CfsConfig, file_name: str, n_points: int):
+    """
+    Load the static stress tensors computed by cfs_static (NED axis) and convert
+    them to ENZ axis for the zero-frequency correction.
+    Return None if config.correct_zero_freq is False.
+    """
+    if not config.correct_zero_freq:
+        return None
+    if config.max_slowness is None:
+        warnings.warn(
+            "correct_zero_freq is True but max_slowness is None, "
+            "the zero-frequency correction will not be applied."
+        )
+    path_static_stress = os.path.join(config.path_output_results_static, file_name)
+    if not os.path.exists(path_static_stress):
+        raise FileNotFoundError(
+            "%s not found, compute static stress before the dynamic stress "
+            "when correct_zero_freq is True." % path_static_stress
+        )
+    stress_ned = np.load(path_static_stress)
+    if stress_ned.shape[0] != n_points:
+        raise ValueError(
+            "%s has %d points, but %d obs points are used in dynamic computing."
+            % (path_static_stress, stress_ned.shape[0], n_points)
+        )
+    return static_stress_ned2enz(stress_ned)
+
+
 def prepare_compute_cfs(config: CfsConfig):
     source_array = read_source_array(
         source_inds=config.source_inds,
@@ -908,6 +941,9 @@ def prepare_compute_cfs(config: CfsConfig):
             index_col=False,
             header=None,
         ).to_numpy()
+        static_stress_obs = load_static_stress_enz(
+            config, "stress_tensor_plane%d.npy" % ind_obs, len(obs_plane)
+        )
         if config.optimal_type == 0:
             inp_list = []
             for i in range(len(obs_plane)):
@@ -921,6 +957,7 @@ def prepare_compute_cfs(config: CfsConfig):
                     green_info,
                     path_results_each,
                     config.use_spherical,
+                    None if static_stress_obs is None else static_stress_obs[i],
                 ]
                 inp_list.append(inp)
             with open(
@@ -941,6 +978,7 @@ def prepare_compute_cfs(config: CfsConfig):
                     green_info,
                     path_results_each,
                     config.use_spherical,
+                    None if static_stress_obs is None else static_stress_obs[i],
                 ]
                 inp_list.append(inp)
             with open(
@@ -962,6 +1000,7 @@ def prepare_compute_cfs(config: CfsConfig):
                     green_info,
                     path_results_each,
                     config.use_spherical,
+                    None if static_stress_obs is None else static_stress_obs[i],
                 ]
                 inp_list.append(inp)
             with open(
@@ -973,16 +1012,13 @@ def prepare_compute_cfs(config: CfsConfig):
 def build_parallel_jobs(input_list, path_source_array, optimal_type, check_finished):
     """
     Convert the pickled input lists into positional args of the target function.
-    cal_cfs_dynamic_single_point_fm/_opt_rake have a `static_stress` argument
-    before `check_finish`, cal_cfs_dynamic_single_point_oop does not.
+    Each input list ends with `static_stress`, the targets take `check_finish`
+    as the next positional argument.
     """
     jobs = []
     for args in input_list:
-        # [path_green, source_array, ...]
-        args = [args[0], path_source_array] + args[1:]
-        if optimal_type in (0, 1):
-            args = args + [None]  # static_stress
-        args = args + [check_finished]
+        # [path_green, source_array, ..., static_stress, check_finish]
+        args = [args[0], path_source_array] + args[1:] + [check_finished]
         jobs.append(args)
     return jobs
 
@@ -1066,16 +1102,9 @@ def compute_dynamic_cfs_sequential(config: CfsConfig):
             index_col=False,
             header=None,
         ).to_numpy()
-        if config.correct_zero_freq:
-            path_static_stress_tensor = str(
-                os.path.join(
-                    config.path_output_results_static,
-                    "stress_tensor_plane%d.npy" % ind_obs,
-                )
-            )
-            static_stress_obs = np.load(path_static_stress_tensor)  # ned
-        else:
-            static_stress_obs = None
+        static_stress_obs = load_static_stress_enz(
+            config, "stress_tensor_plane%d.npy" % ind_obs, len(obs_plane)
+        )
 
         if config.optimal_type == 0:
             for i in tqdm(
@@ -1083,19 +1112,7 @@ def compute_dynamic_cfs_sequential(config: CfsConfig):
                 desc="Computing dynamic Coulomb Failure Stress change at No.%d plane"
                 "(fixed focal mechanism)" % ind_obs,
             ):
-                if static_stress_obs is not None:
-                    static_stress = np.array(
-                        [
-                            static_stress_obs[i, 3],
-                            static_stress_obs[i, 1],
-                            -static_stress_obs[i, 4],
-                            static_stress_obs[i, 0],
-                            -static_stress_obs[i, 2],
-                            static_stress_obs[i, 5],
-                        ]
-                    )  # enz
-                else:
-                    static_stress = None
+                static_stress = None if static_stress_obs is None else static_stress_obs[i]
                 cal_cfs_dynamic_single_point_fm(
                     path_green=config.path_green_dynamic,
                     source_array=source_array,
@@ -1124,6 +1141,7 @@ def compute_dynamic_cfs_sequential(config: CfsConfig):
                     tectonic_stress=config.tectonic_stress,
                     mu_f=config.mu_f,
                     B_pore=config.B_pore,
+                    static_stress=None if static_stress_obs is None else static_stress_obs[i],
                     max_slowness=config.max_slowness,
                     green_info=green_info,
                     path_results_each=path_results_each,
@@ -1145,6 +1163,7 @@ def compute_dynamic_cfs_sequential(config: CfsConfig):
                     tectonic_stress=config.tectonic_stress,
                     mu_f=config.mu_f,
                     B_pore=config.B_pore,
+                    static_stress=None if static_stress_obs is None else static_stress_obs[i],
                     max_slowness=config.max_slowness,
                     green_info=green_info,
                     path_results_each=path_results_each,
@@ -1287,6 +1306,9 @@ def prepare_compute_cfs_fix_depth(
     np.save(
         os.path.join(path_results_each, "obs_plane_%.2f.npy" % obs_depth), obs_plane
     )
+    static_stress_obs = load_static_stress_enz(
+        config, "stress_tensor_dep_%.2f.npy" % obs_depth, len(obs_plane)
+    )
 
     if config.optimal_type == 0:
         inp_list = []
@@ -1301,6 +1323,7 @@ def prepare_compute_cfs_fix_depth(
                 green_info,
                 path_results_each,
                 config.use_spherical,
+                None if static_stress_obs is None else static_stress_obs[i],
             ]
             inp_list.append(inp)
         with open(
@@ -1321,6 +1344,7 @@ def prepare_compute_cfs_fix_depth(
                 green_info,
                 path_results_each,
                 config.use_spherical,
+                None if static_stress_obs is None else static_stress_obs[i],
             ]
             inp_list.append(inp)
         with open(
@@ -1342,6 +1366,7 @@ def prepare_compute_cfs_fix_depth(
                 green_info,
                 path_results_each,
                 config.use_spherical,
+                None if static_stress_obs is None else static_stress_obs[i],
             ]
             inp_list.append(inp)
         with open(
@@ -1487,10 +1512,15 @@ def compute_dynamic_cfs_fix_depth_sequential(
         obs_plane[:, 3] = obs_plane[:, 3] + receiver_mechanism[0]
         obs_plane[:, 4] = obs_plane[:, 4] + receiver_mechanism[1]
 
+    static_stress_obs = load_static_stress_enz(
+        config, "stress_tensor_dep_%.2f.npy" % obs_depth, len(obs_plane)
+    )
+
     for i in tqdm(
         range(len(obs_plane)),
         desc="Computing dynamic Coulomb Failure Stress change at depth %f" % obs_depth,
     ):
+        static_stress = None if static_stress_obs is None else static_stress_obs[i]
         if config.optimal_type == 0:
             cal_cfs_dynamic_single_point_fm(
                 path_green=config.path_green_dynamic,
@@ -1499,6 +1529,7 @@ def compute_dynamic_cfs_fix_depth_sequential(
                 srate_stf=1 / config.sampling_interval_stf,
                 mu_f=config.mu_f,
                 B_pore=config.B_pore,
+                static_stress=static_stress,
                 max_slowness=config.max_slowness,
                 green_info=green_info,
                 path_results_each=path_results_each,
@@ -1514,6 +1545,7 @@ def compute_dynamic_cfs_fix_depth_sequential(
                 srate_stf=1 / config.sampling_interval_stf,
                 mu_f=config.mu_f,
                 B_pore=config.B_pore,
+                static_stress=static_stress,
                 max_slowness=config.max_slowness,
                 green_info=green_info,
                 path_results_each=path_results_each,
@@ -1530,6 +1562,7 @@ def compute_dynamic_cfs_fix_depth_sequential(
                 srate_stf=1 / config.sampling_interval_stf,
                 mu_f=config.mu_f,
                 B_pore=config.B_pore,
+                static_stress=static_stress,
                 max_slowness=config.max_slowness,
                 green_info=green_info,
                 path_results_each=path_results_each,

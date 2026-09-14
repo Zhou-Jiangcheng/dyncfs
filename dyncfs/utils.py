@@ -456,6 +456,19 @@ def cal_grid_num(value_range, delta, decimals=8):
     return int(np.ceil(ratio) + 1)
 
 
+def static_stress_ned2enz(stress_ned):
+    """
+    [sigma_nn, sigma_ne, sigma_nd, sigma_ee, sigma_ed, sigma_dd] ->
+    [sigma_ee, sigma_en, sigma_ez, sigma_nn, sigma_nz, sigma_zz]
+    :param stress_ned: shape (6,) or (N, 6)
+    """
+    stress_ned = np.asarray(stress_ned)
+    stress_enz = stress_ned[..., [3, 1, 4, 0, 2, 5]].copy()
+    stress_enz[..., 2] = -stress_enz[..., 2]
+    stress_enz[..., 4] = -stress_enz[..., 4]
+    return stress_enz
+
+
 def bool2int(input_bool):
     if input_bool:
         return 1

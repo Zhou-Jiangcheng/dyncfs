@@ -228,6 +228,10 @@ class CfsConfig(object):
         )
         self.cut_stf = int(config["input_addition"]["cut_stf"].strip())
         self.slip_thresh = float(config["input_addition"]["slip_thresh"])
+        # optional, correct the zero-frequency of dynamic stress by static stress
+        self.correct_zero_freq = config["input_addition"].getboolean(
+            "correct_zero_freq", fallback=False
+        )
 
         # [fixed_obs_depth]
         self.fixed_obs_depth = float(
