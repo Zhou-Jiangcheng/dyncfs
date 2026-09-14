@@ -1,5 +1,6 @@
 import contextlib
 import datetime
+import hashlib
 import math
 import os
 from typing import Union
@@ -309,6 +310,104 @@ def synthesize_dynamic_stress(
     return stress_ned
 
 
+def stress_cache_signature(
+    path_green,
+    source_array,
+    obs_array_single_point,
+    srate_stf,
+    static_stress,
+    max_slowness,
+    green_info,
+    use_spherical,
+):
+    """
+    Parameters that determine the synthesized dynamic stress of one obs point.
+    The cached *_stress_ned.npy is only reused when its signature is identical.
+    """
+    source_array = np.ascontiguousarray(source_array, dtype=np.float64)
+    return {
+        "path_green": os.path.abspath(path_green),
+        "green_info_sha1": hashlib.sha1(
+            json.dumps(green_info, sort_keys=True, default=str).encode()
+        ).hexdigest(),
+        "source_array_sha1": hashlib.sha1(source_array.tobytes()).hexdigest()
+        + "_%dx%d" % source_array.shape,
+        "obs_point": [float(v) for v in np.asarray(obs_array_single_point)[:3]],
+        "srate_stf": float(srate_stf),
+        "static_stress": None
+        if static_stress is None
+        else [float(v) for v in np.asarray(static_stress).ravel()],
+        "max_slowness": None if max_slowness is None else float(max_slowness),
+        "use_spherical": bool(use_spherical),
+    }
+
+
+def load_or_synthesize_stress_ned(
+    path_green,
+    source_array,
+    obs_array_single_point,
+    srate_stf,
+    static_stress,
+    max_slowness,
+    green_info,
+    use_spherical,
+    path_results_each,
+    file_name,
+    check_finish,
+):
+    """
+    Synthesize the dynamic stress in NED axis [nn, ne, nd, ee, ed, dd], or load it
+    from path_results_each when check_finish is True and the cached result was
+    computed with the same parameters (see stress_cache_signature).
+    The synthesized stress and its signature are saved to path_results_each.
+    """
+    if path_results_each is None:
+        return synthesize_dynamic_stress(
+            path_green=path_green,
+            source_array=source_array,
+            obs_array_single_point=obs_array_single_point,
+            srate_stf=srate_stf,
+            static_stress=static_stress,
+            max_slowness=max_slowness,
+            green_info=green_info,
+            use_spherical=use_spherical,
+        )
+    signature = stress_cache_signature(
+        path_green,
+        source_array,
+        obs_array_single_point,
+        srate_stf,
+        static_stress,
+        max_slowness,
+        green_info,
+        use_spherical,
+    )
+    path_stress_ned = os.path.join(path_results_each, file_name + "_stress_ned.npy")
+    path_signature = os.path.join(path_results_each, file_name + "_stress_ned.json")
+    if check_finish and os.path.exists(path_stress_ned) and os.path.exists(path_signature):
+        try:
+            with open(path_signature, "r") as fr:
+                cached_signature = json.load(fr)
+        except (OSError, ValueError):
+            cached_signature = None
+        if cached_signature == signature:
+            return np.load(path_stress_ned)
+    stress_ned = synthesize_dynamic_stress(
+        path_green=path_green,
+        source_array=source_array,
+        obs_array_single_point=obs_array_single_point,
+        srate_stf=srate_stf,
+        static_stress=static_stress,
+        max_slowness=max_slowness,
+        green_info=green_info,
+        use_spherical=use_spherical,
+    )
+    np.save(path_stress_ned, stress_ned)
+    with open(path_signature, "w") as fw:
+        json.dump(signature, fw)
+    return stress_ned
+
+
 def cal_stress_vector_ned_dynamic(stress_ned, n):
     stress_tensor_ned = np.array(
         [
@@ -381,28 +480,19 @@ def cal_cfs_dynamic_single_point_fm(
         with open(os.path.join(path_green, "green_lib_info.json"), "r") as fr:
             green_info = json.load(fr)
 
-    if path_results_each is not None:
-        path_stress_ned = str(
-            os.path.join(
-                path_results_each,
-                file_name + "_stress_ned.npy",
-            )
-        )
-    else:
-        path_stress_ned = ""
-    if check_finish and os.path.exists(path_stress_ned):
-        stress_ned = np.load(path_stress_ned)
-    else:
-        stress_ned = synthesize_dynamic_stress(
-            path_green=path_green,
-            source_array=source_array,
-            obs_array_single_point=obs_array_single_point,
-            srate_stf=srate_stf,
-            static_stress=static_stress,
-            max_slowness=max_slowness,
-            green_info=green_info,
-            use_spherical=use_spherical,
-        )
+    stress_ned = load_or_synthesize_stress_ned(
+        path_green=path_green,
+        source_array=source_array,
+        obs_array_single_point=obs_array_single_point,
+        srate_stf=srate_stf,
+        static_stress=static_stress,
+        max_slowness=max_slowness,
+        green_info=green_info,
+        use_spherical=use_spherical,
+        path_results_each=path_results_each,
+        file_name=file_name,
+        check_finish=check_finish,
+    )
 
     n_obs, d_obs = plane2nd(*obs_array_single_point[3:])
     n = np.array([n_obs.flatten()]).T
@@ -430,15 +520,6 @@ def cal_cfs_dynamic_single_point_fm(
             sigma,
             tau,
             cfs,
-        )
-        np.save(
-            str(
-                os.path.join(
-                    path_results_each,
-                    file_name + "_stress_ned.npy",
-                )
-            ),
-            stress_ned,
         )
         np.save(
             str(
@@ -533,31 +614,20 @@ def cal_cfs_dynamic_single_point_opt_rake(
         with open(os.path.join(path_green, "green_lib_info.json"), "r") as fr:
             green_info = json.load(fr)
 
-    # Path to (optional) cached dynamic stress
-    if path_results_each is not None:
-        path_stress_ned = str(
-            os.path.join(
-                path_results_each,
-                file_name + "_stress_ned.npy",
-            )
-        )
-    else:
-        path_stress_ned = ""
-
-    # Synthesize (or load) dynamic stress in NED axis: [nn, ne, nd, ee, ed, dd]
-    if check_finish and os.path.exists(path_stress_ned):
-        stress_ned = np.load(path_stress_ned)
-    else:
-        stress_ned = synthesize_dynamic_stress(
-            path_green=path_green,
-            source_array=source_array,
-            obs_array_single_point=obs_array_single_point,
-            srate_stf=srate_stf,
-            static_stress=static_stress,
-            max_slowness=max_slowness,
-            green_info=green_info,
-            use_spherical=use_spherical,
-        )
+    # Synthesize (or load cached) dynamic stress in NED axis: [nn, ne, nd, ee, ed, dd]
+    stress_ned = load_or_synthesize_stress_ned(
+        path_green=path_green,
+        source_array=source_array,
+        obs_array_single_point=obs_array_single_point,
+        srate_stf=srate_stf,
+        static_stress=static_stress,
+        max_slowness=max_slowness,
+        green_info=green_info,
+        use_spherical=use_spherical,
+        path_results_each=path_results_each,
+        file_name=file_name,
+        check_finish=check_finish,
+    )
 
     N = stress_ned.shape[0]
     tectonic_stress = np.asarray(tectonic_stress, dtype=float).reshape(6)
@@ -624,15 +694,6 @@ def cal_cfs_dynamic_single_point_opt_rake(
             d_opt,  # rupture_vector (time-varying, optimal)
             sigma_n,  # normal_stress
             tau,  # shear_stress
-        )
-        np.save(
-            str(
-                os.path.join(
-                    path_results_each,
-                    file_name + "_stress_ned.npy",
-                )
-            ),
-            results[0],
         )
         np.save(
             str(
@@ -735,25 +796,19 @@ def cal_cfs_dynamic_single_point_oop(
         with open(os.path.join(path_green, "green_lib_info.json"), "r") as fr:
             green_info = json.load(fr)
 
-    if path_results_each is not None:
-        path_stress_ned = str(
-            os.path.join(path_results_each, file_name + "_stress_ned.npy")
-        )
-    else:
-        path_stress_ned = ""
-    if check_finish and os.path.exists(path_stress_ned):
-        stress_ned = np.load(path_stress_ned)
-    else:
-        stress_ned = synthesize_dynamic_stress(
-            path_green=path_green,
-            source_array=source_array,
-            obs_array_single_point=obs_array_single_point,
-            srate_stf=srate_stf,
-            static_stress=static_stress,
-            max_slowness=max_slowness,
-            green_info=green_info,
-            use_spherical=use_spherical,
-        )
+    stress_ned = load_or_synthesize_stress_ned(
+        path_green=path_green,
+        source_array=source_array,
+        obs_array_single_point=obs_array_single_point,
+        srate_stf=srate_stf,
+        static_stress=static_stress,
+        max_slowness=max_slowness,
+        green_info=green_info,
+        use_spherical=use_spherical,
+        path_results_each=path_results_each,
+        file_name=file_name,
+        check_finish=check_finish,
+    )
 
     N = stress_ned.shape[0]
 
@@ -863,9 +918,6 @@ def cal_cfs_dynamic_single_point_oop(
             [n1, d1, sigma1, tau1],
             [n2, d2, sigma2, tau2],
             cfs,
-        )
-        np.save(
-            os.path.join(path_results_each, file_name + "_stress_ned.npy"), stress_ned
         )
         np.save(os.path.join(path_results_each, file_name + "_oop_cfs.npy"), cfs)
         for jj in range(2):
