@@ -177,3 +177,4 @@ test/
 
 # ai
 .claude/
+.codex/
