@@ -417,14 +417,16 @@ class CfsConfig(object):
 
         points = np.concatenate([source_points[:, :2], obs_points[:, :2]])
         ref_point = geographic_centroid(points)
-        obs_x_min = float(np.min(obs_points[:, 0])) - self.grn_delta_dist
-        obs_x_max = float(np.max(obs_points[:, 0])) + self.grn_delta_dist
-        obs_y_min = float(np.min(obs_points[:, 1])) - self.grn_delta_dist
-        obs_y_max = float(np.max(obs_points[:, 1])) + self.grn_delta_dist
-        self.obs_lat_range = [obs_x_min, obs_x_max]
-        self.obs_lon_range = [obs_y_min, obs_y_max]
-        self.obs_delta_lat = self.grn_delta_dist / d2km
-        self.obs_delta_lon = self.grn_delta_dist / d2km
+        # grn_delta_dist is in km (converted in read_config), pad in deg
+        delta_deg = self.grn_delta_dist / d2km
+        obs_lat_min = float(np.min(obs_points[:, 0])) - delta_deg
+        obs_lat_max = float(np.max(obs_points[:, 0])) + delta_deg
+        obs_lon_min = float(np.min(obs_points[:, 1])) - delta_deg
+        obs_lon_max = float(np.max(obs_points[:, 1])) + delta_deg
+        self.obs_lat_range = [obs_lat_min, obs_lat_max]
+        self.obs_lon_range = [obs_lon_min, obs_lon_max]
+        self.obs_delta_lat = delta_deg
+        self.obs_delta_lon = delta_deg
         self.source_ref = list(ref_point)
         self.obs_ref = list(ref_point)
         return ref_point, obs_points
