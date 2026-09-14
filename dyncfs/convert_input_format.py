@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from pygrnwang.focal_mechanism import tensor2full_tensor_matrix
-from pygrnwang.geo import d2km, cartesian_2_spherical, convert_sub_faults_geo2ned
+from pygrnwang.geo import d2km, convert_sub_faults_geo2ned
 
 from .configuration import CfsConfig
 from .utils import read_source_array, reshape_sub_faults
@@ -255,26 +255,52 @@ def convert_source_csvs2coulomb3(
         "FRIC=%15.3f\n" % config.mu_f,
     ]
 
-    if config.optimal_type == 2:
-        st = tensor2full_tensor_matrix(config.tectonic_stress, "ned")
-        [eigenvalues, eigenvectors] = np.linalg.eig(st)
-        index = eigenvalues.argsort()
-        eigenvalues = -eigenvalues[:, index]
-        eigenvectors = eigenvectors[:, index]
+    tectonic_stress_type = getattr(config, "tectonic_stress_type", None)
+    if tectonic_stress_type in (1, 2):
+        if tectonic_stress_type == 1:
+            # tectonic_stress in Pa (NED, tension positive)
+            st = tensor2full_tensor_matrix(config.tectonic_stress, "ned")
+            eigenvalues, eigenvectors = np.linalg.eigh(st)
+            index = eigenvalues.argsort()  # most compressive first
+            # Coulomb3: compression positive, unit bar
+            intensities = -eigenvalues[index] / 1e5
+            axes = eigenvectors[:, index]
+        else:
+            # principal axes ordered from the smallest to the largest principal
+            # stress (tension positive), magnitudes are not provided
+            ts = np.asarray(config.tectonic_stress, dtype=float)
+            axes = np.zeros((3, 3))
+            for i in range(3):
+                phi = np.deg2rad(ts[2 * i])
+                delta = np.deg2rad(ts[2 * i + 1])
+                axes[:, i] = [
+                    np.cos(phi) * np.cos(delta),
+                    np.sin(phi) * np.cos(delta),
+                    np.sin(delta),
+                ]
+            intensities = np.array([100.0, 30.0, 0.0])
+            print(
+                "tectonic_stress_type=2 gives no stress magnitudes, "
+                "S1IN/S2IN/S3IN are set to 100/30/0 bar."
+            )
         lines_regional_stress = []
         for i in range(3):
-            n = eigenvectors[:, i].flatten()
-            _, phi, theta = cartesian_2_spherical(*n)
+            n = axes[:, i] / np.linalg.norm(axes[:, i])  # NED
+            if n[2] < 0:
+                n = -n
+            azimuth = np.rad2deg(np.arctan2(n[1], n[0])) % 360
+            plunge = np.rad2deg(np.arcsin(np.clip(n[2], -1, 1)))
             S_ind = i + 1
             lines_regional_stress.append(
-                "S%dDR=%15.3f S%dDP=%15.3f S%dIN=%15.3f S1GD=%15.3f\n"
+                "S%dDR=%15.3f S%dDP=%15.3f S%dIN=%15.3f S%dGD=%15.3f\n"
                 % (
                     S_ind,
-                    eigenvalues[i] / 1e5,
+                    azimuth,
                     S_ind,
-                    np.rad2deg(phi),
+                    plunge,
                     S_ind,
-                    np.rad2deg(theta),
+                    intensities[i],
+                    S_ind,
                     0.0,
                 )
             )
