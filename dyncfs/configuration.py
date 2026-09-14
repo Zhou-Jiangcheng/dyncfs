@@ -274,8 +274,8 @@ class CfsConfig(object):
         self.time_window = (self.sampling_num - 1) * self.sampling_interval_cfs
         try:
             self.max_frequency = float(config["time_window"]["max_frequency"])
-        except:
-            self.max_frequency = self.sampling_interval_cfs / 2
+        except (KeyError, ValueError):
+            self.max_frequency = 1 / (2 * self.sampling_interval_cfs)
 
         # [parallel]
         self.processes_num = int(config["parallel"]["processes_num"])
@@ -372,7 +372,7 @@ class CfsConfig(object):
             self.gravity_fc = float(config["dynamic"]["gravity_fc"])
             self.gravity_harmonic = int(config["dynamic"]["gravity_harmonic"])
             self.cal_sph = bool2int(config["dynamic"].getboolean("cal_sph"))
-            self.cal_tor = bool2int(config["dynamic"].getboolean("cal_sph"))
+            self.cal_tor = bool2int(config["dynamic"].getboolean("cal_tor"))
             self.min_harmonic = int(config["dynamic"]["min_harmonic"])
             self.max_harmonic = int(config["dynamic"]["max_harmonic"])
             self.physical_dispersion = bool2int(
