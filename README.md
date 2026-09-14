@@ -80,6 +80,11 @@ if __name__ == "__main__":
     compute_dynamic_cfs_parallel(config)
 ```
 
+**Note on parallel computing** (`compute_dynamic_cfs_parallel`, `compute_dynamic_cfs_fix_depth_parallel`, `run_all_dynamic`, and `processes_num > 1` in the command-line tool):
+
+- Worker processes are started with the `spawn` method on all platforms (Windows, Linux and macOS), so the calling script **must** put its code under `if __name__ == "__main__":` as in the examples above. Otherwise the workers re-run the script and fail with `RuntimeError: An attempt has been made to start a new process before the current process has finished its bootstrapping phase`.
+- Each worker process is limited to one BLAS/OpenMP thread (`OMP_NUM_THREADS`, `MKL_NUM_THREADS`, `OPENBLAS_NUM_THREADS` and `VECLIB_MAXIMUM_THREADS` are set to 1 only for the workers) to avoid oversubscription. Use `processes_num` to control the CPU usage, e.g. not more than the number of cores allocated by the job scheduler on a cluster.
+
 # References:
 Wang, R. (1999). A simple orthonormalization method for stable and efficient computation of Green’s functions.  *Bulletin of the Seismological Society of America* ,  *89* (3), 733–741. https://doi.org/10.1785/BSSA0890030733
 

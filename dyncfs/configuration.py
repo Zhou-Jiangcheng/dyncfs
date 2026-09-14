@@ -127,7 +127,6 @@ class CfsConfig(object):
         self.max_harmonic: int = None  # type: ignore
 
         self.default_config: bool = None  # type: ignore
-        self.multiprocessing_flag = None  # type: ignore
 
     def read_config(self, path_conf):
         config = configparser.ConfigParser()

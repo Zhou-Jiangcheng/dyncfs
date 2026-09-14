@@ -1,9 +1,10 @@
+import contextlib
 import datetime
+import math
 import os
 from typing import Union
 import pickle
 import json
-import multiprocessing as mp
 from multiprocessing import get_context
 import warnings
 
@@ -1023,15 +1024,65 @@ def build_parallel_jobs(input_list, path_source_array, optimal_type, check_finis
     return jobs
 
 
+# Thread-count variables of OpenMP, Intel MKL, OpenBLAS and Apple Accelerate
+THREAD_ENV_VARS = (
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+)
+
+
+@contextlib.contextmanager
+def limit_worker_threads(num_threads: int = 1):
+    """
+    Set the thread-count environment variables while worker processes are started.
+
+    BLAS/OpenMP libraries read these variables when numpy is imported, so they only
+    take effect in newly spawned child processes, not in the current process.
+    The original values are restored on exit, so they do not leak into later code
+    or subprocesses.
+    """
+    old_values = {key: os.environ.get(key) for key in THREAD_ENV_VARS}
+    for key in THREAD_ENV_VARS:
+        os.environ[key] = str(num_threads)
+    try:
+        yield
+    finally:
+        for key, value in old_values.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
+def run_parallel_jobs(target, jobs, processes_num: int):
+    """
+    Run target(*job) for every job in a pool of spawned worker processes.
+
+    - The "spawn" start method is used through a local context, the global start
+      method of the program is not changed. "spawn" is the only method on Windows
+      and the default on macOS. On Linux it avoids forking a parent whose BLAS/OpenMP
+      thread pools are already initialized: a forked child keeps all these threads
+      (the thread-count variables are ignored) and some OpenMP runtimes may hang.
+    - Each worker uses one BLAS/OpenMP thread to avoid oversubscription.
+    - Workers are reused for all chunks, so numpy/scipy/pygrnwang are imported only
+      once per worker.
+
+    Scripts calling this function must be protected by `if __name__ == "__main__":`.
+    """
+    if len(jobs) == 0:
+        return
+    processes_num = max(1, min(int(processes_num), len(jobs)))
+    chunksize = max(1, math.ceil(len(jobs) / (processes_num * 4)))
+    ctx = get_context("spawn")
+    with limit_worker_threads(1):
+        with ctx.Pool(processes=processes_num) as pool:
+            pool.starmap(target, jobs, chunksize=chunksize)
+
+
 def compute_dynamic_cfs_parallel(config: CfsConfig):
     s = datetime.datetime.now()
-    if config.multiprocessing_flag is None:
-        os.environ["OMP_NUM_THREADS"] = "1"
-        os.environ["MKL_NUM_THREADS"] = "1"
-        os.environ["OPENBLAS_NUM_THREADS"] = "1"
-        config.multiprocessing_flag = 1
-    mp.set_start_method("spawn", force=True)
-    ctx = get_context("spawn")
 
     prepare_compute_cfs(config)
     path_results_each = str(os.path.join(config.path_output, "grn_d", "results_each"))
@@ -1057,8 +1108,7 @@ def compute_dynamic_cfs_parallel(config: CfsConfig):
         else:
             raise ValueError("optimal_type must be 0/1/2")
 
-        with ctx.Pool(processes=config.processes_num, maxtasksperchild=1) as pool:
-            pool.starmap(target, jobs)
+        run_parallel_jobs(target, jobs, config.processes_num)
 
         obs_plane = pd.read_csv(
             os.path.join(config.path_input, f"obs_plane{ind_obs}.csv"),
@@ -1077,11 +1127,6 @@ def compute_dynamic_cfs_parallel(config: CfsConfig):
 
 def compute_dynamic_cfs_sequential(config: CfsConfig):
     s = datetime.datetime.now()
-    if config.multiprocessing_flag is not None:
-        os.environ["OMP_NUM_THREADS"] = ""
-        os.environ["MKL_NUM_THREADS"] = ""
-        os.environ["OPENBLAS_NUM_THREADS"] = ""
-        config.multiprocessing_flag = None
     source_array = read_source_array(
         source_inds=config.source_inds,
         path_input=config.path_input,
@@ -1381,12 +1426,6 @@ def compute_dynamic_cfs_fix_depth_parallel(
     s = datetime.datetime.now()
     if obs_depth is None:
         obs_depth = config.fixed_obs_depth
-    if config.multiprocessing_flag is None:
-        os.environ["OMP_NUM_THREADS"] = "1"
-        os.environ["MKL_NUM_THREADS"] = "1"
-        os.environ["OPENBLAS_NUM_THREADS"] = "1"
-    mp.set_start_method("spawn", force=True)
-    ctx = get_context("spawn")
 
     prepare_compute_cfs_fix_depth(config, obs_depth, receiver_mechanism)
     path_results_each = str(os.path.join(config.path_output, "grn_d", "results_each"))
@@ -1411,8 +1450,7 @@ def compute_dynamic_cfs_fix_depth_parallel(
     else:
         raise ValueError("optimal_type must be 0/1/2")
 
-    with ctx.Pool(processes=config.processes_num, maxtasksperchild=1) as pool:
-        pool.starmap(target, jobs)
+    run_parallel_jobs(target, jobs, config.processes_num)
 
     obs_plane = np.load(
         os.path.join(path_results_each, "obs_plane_%.2f.npy" % obs_depth)
@@ -1450,11 +1488,6 @@ def compute_dynamic_cfs_fix_depth_sequential(
     """
     if obs_depth is None:
         obs_depth = config.fixed_obs_depth
-    if config.multiprocessing_flag is not None:
-        os.environ["OMP_NUM_THREADS"] = ""
-        os.environ["MKL_NUM_THREADS"] = ""
-        os.environ["OPENBLAS_NUM_THREADS"] = ""
-        config.multiprocessing_flag = None
 
     if obs_lat_range is None:
         obs_lat_range = config.obs_lat_range
