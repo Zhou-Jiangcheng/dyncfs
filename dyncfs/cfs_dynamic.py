@@ -66,7 +66,7 @@ def create_dynamic_lib(config: CfsConfig):
             min_harmonic=config.min_harmonic,
             max_harmonic=config.max_harmonic,
             source_radius=config.source_radius,
-            source_duration=config.wavelet_duration / config.sampling_interval_cfs,
+            source_duration=config.wavelet_duration * config.sampling_interval_cfs,
             output_observables=config.output_observables,
             time_window=config.time_window,
             time_reduction=config.time_reduction,
@@ -251,44 +251,43 @@ def synthesize_dynamic_stress(
         if dist_km_max < dist_in_km:
             dist_km_max = dist_in_km
 
+    # wavelet_duration in samples
     if use_spherical:
-        wavelet_duration = round(green_info["source_duration"] / srate_cfs)
+        wavelet_duration = round(green_info["source_duration"] * srate_cfs)
     else:
         wavelet_duration = green_info["wavelet_duration"]
-    if (static_stress is not None) and (max_slowness is not None):
-        tc1 = max(1, round(tp_min * srate_cfs - 1))
+    if max_slowness is not None and np.isfinite(tp_min):
+        # all terms in samples
         tc2 = round(
-            dist_km_max * max_slowness
+            dist_km_max * max_slowness * srate_cfs
             + 1.5 * wavelet_duration
             + sub_stfs.shape[1] * srate_cfs / srate_stf
         )
+        tc2 = min(tc2, sampling_num)
+    if (static_stress is not None) and (max_slowness is not None) and np.isfinite(tp_min):
+        tc1 = max(1, round(tp_min * srate_cfs - 1))
         stress_rate_enz = (
             signal.convolve(
                 stress_enz, np.array([1, -1])[:, None], mode="same", method="auto"
             )
-            / srate_cfs
+            * srate_cfs
         )
-        for i_cor in range(6):
-            stress_rate_enz[:, i_cor] = correct_zero_frequency(
-                data=stress_rate_enz[:, i_cor],
-                srate=srate_cfs,
-                A0=static_stress[i_cor],
-                f_c=min(4, tc2 - tc1),
-                tc1=tc1,
-                tc2=tc2,
-                ratio_interp=0,
-            )
-            stress_enz[:, i_cor] = np.cumsum(stress_rate_enz[:, i_cor]) / srate_cfs
-    elif max_slowness is not None:
-        tc2 = round(
-            dist_km_max * max_slowness
-            + 1.5 * wavelet_duration
-            + sub_stfs.shape[1] * srate_cfs / srate_stf
-        )
-        final_values = np.mean(
-            stress_enz[tc2 + round(10 * srate_cfs) : tc2 + round(20 * srate_cfs), :],
-            axis=0,
-        )
+        if tc2 - tc1 > 1:
+            for i_cor in range(6):
+                stress_rate_enz[:, i_cor] = correct_zero_frequency(
+                    data=stress_rate_enz[:, i_cor],
+                    srate=srate_cfs,
+                    A0=static_stress[i_cor],
+                    f_c=min(4, tc2 - tc1),
+                    tc1=tc1,
+                    tc2=tc2,
+                    ratio_interp=0,
+                )
+                stress_enz[:, i_cor] = np.cumsum(stress_rate_enz[:, i_cor]) / srate_cfs
+    elif max_slowness is not None and np.isfinite(tp_min) and tc2 < sampling_num:
+        i0 = min(tc2 + round(10 * srate_cfs), sampling_num - 1)
+        i1 = min(tc2 + round(20 * srate_cfs), sampling_num)
+        final_values = np.mean(stress_enz[i0:i1, :], axis=0)
         stress_enz[tc2:, :] = np.array([final_values]) * np.ones_like(
             stress_enz[tc2:, :]
         )
