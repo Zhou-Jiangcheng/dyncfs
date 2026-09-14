@@ -382,6 +382,10 @@ class CfsConfig(object):
                 config["dynamic"].getboolean("physical_dispersion")
             )
 
+    def fixed_obs_depth_enabled(self) -> bool:
+        """dCFS at fixed depth is only computed when fixed_obs_depth > 0."""
+        return self.fixed_obs_depth is not None and self.fixed_obs_depth > 0
+
     def get_obs_region(self):
         # calculate reference point
         source_points = None

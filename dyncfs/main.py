@@ -87,7 +87,10 @@ def main():
     if args.compute_static_cfs:
         compute_static_cfs(config)
     if args.compute_static_cfs_fix_depth:
-        compute_static_cfs_fix_depth(config)
+        if config.fixed_obs_depth_enabled():
+            compute_static_cfs_fix_depth(config)
+        else:
+            print("fixed_obs_depth <= 0, skip computing static dCFS at fixed depth.")
     if args.run_static:
         run_all_static(config)
 
@@ -99,7 +102,9 @@ def main():
         else:
             compute_dynamic_cfs_parallel(config)
     if args.compute_dynamic_cfs_fix_depth:
-        if config.processes_num == 1:
+        if not config.fixed_obs_depth_enabled():
+            print("fixed_obs_depth <= 0, skip computing dynamic dCFS at fixed depth.")
+        elif config.processes_num == 1:
             compute_dynamic_cfs_fix_depth_sequential(config)
         else:
             compute_dynamic_cfs_fix_depth_parallel(config)

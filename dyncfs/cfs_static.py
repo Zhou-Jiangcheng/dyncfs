@@ -773,7 +773,10 @@ def compute_static_cfs_fix_depth(
 def run_all_static(config: CfsConfig):
     create_static_lib(config)
     compute_static_cfs(config)
-    compute_static_cfs_fix_depth(config)
+    if config.fixed_obs_depth_enabled():
+        compute_static_cfs_fix_depth(config)
+    else:
+        print("fixed_obs_depth <= 0, skip computing static dCFS at fixed depth.")
 
 
 if __name__ == "__main__":

@@ -1724,7 +1724,12 @@ def run_all_dynamic(config: CfsConfig):
         compute_dynamic_cfs_sequential(config)
     else:
         compute_dynamic_cfs_parallel(config)
-    compute_dynamic_cfs_fix_depth_parallel(config)
+    if not config.fixed_obs_depth_enabled():
+        print("fixed_obs_depth <= 0, skip computing dynamic dCFS at fixed depth.")
+    elif config.processes_num == 1:
+        compute_dynamic_cfs_fix_depth_sequential(config)
+    else:
+        compute_dynamic_cfs_fix_depth_parallel(config)
 
 
 if __name__ == "__main__":
