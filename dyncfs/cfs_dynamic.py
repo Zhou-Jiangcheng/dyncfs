@@ -43,6 +43,7 @@ from .utils import (
     spherical_dist_azimuth_km,
     static_stress_ned2enz,
     cal_grid_num,
+    orient_principal_axes,
 )
 
 
@@ -785,13 +786,11 @@ def cal_cfs_dynamic_single_point_oop(
         )
         # Batched eigendecomposition for S = sigma + T
         S = sigma + T  # broadcast to (N,3,3)
-        # np.linalg.eig supports batched solve on the last two dims
-        evals, evecs = np.linalg.eig(S)  # evals: (N,3), evecs: (N,3,3)
-        # Sort eigenvalues descending and reorder eigenvectors accordingly
-        idx = np.argsort(evals, axis=1)[:, ::-1]  # (N,3)
-        R = np.take_along_axis(
-            evecs, idx[:, None, :], axis=2
-        )  # (N,3,3); columns are principal directions
+        # S is symmetric: batched eigh returns real, ascending eigenvalues
+        evals, evecs = np.linalg.eigh(S)  # evals: (N,3), evecs: (N,3,3)
+        # Descending order; columns are principal directions. Remove the arbitrary
+        # eigenvector signs so that plane 1 / plane 2 are labeled reproducibly.
+        R = orient_principal_axes(evecs[:, :, ::-1])
     elif tectonic_stress_type == 2:
         # tectonic_stress = [az1, pl1, az2, pl2, az3, pl3] (deg)
         ts = np.asarray(tectonic_stress, dtype=float)

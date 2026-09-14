@@ -32,6 +32,7 @@ from .utils import (
     cut_stf_modify_source_array,
     pairwise_spherical_dist_azimuth_km,
     cal_grid_num,
+    orient_principal_axes,
 )
 
 
@@ -238,9 +239,11 @@ def cal_cfs_static_single_point_opt_plane(
             mt=tectonic_stress.copy(), flag="ned"
         )
         S = sigma_tensor + tectonic_stress_tensor
-        [eigenvalues, eigenvectors] = np.linalg.eig(S)
-        index = eigenvalues.argsort()[::-1]
-        R = eigenvectors[:, index]
+        # S is symmetric: eigh returns real, ascending eigenvalues
+        eigenvalues, eigenvectors = np.linalg.eigh(S)
+        # descending order, remove the arbitrary eigenvector signs so that
+        # plane 1 / plane 2 are labeled reproducibly
+        R = orient_principal_axes(eigenvectors[:, ::-1])
     elif tectonic_stress_type == 2:
         R = np.zeros((3, 3))
         for i in range(3):

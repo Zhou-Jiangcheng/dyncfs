@@ -456,6 +456,27 @@ def cal_grid_num(value_range, delta, decimals=8):
     return int(np.ceil(ratio) + 1)
 
 
+def orient_principal_axes(R, eps=1e-12):
+    """
+    Remove the arbitrary signs of eigenvectors returned by LAPACK, so that the
+    outputs related to each principal axis are reproducible.
+
+    :param R: (..., 3, 3), columns are the ordered principal axes in NED axis.
+    :return: Copy of R, columns 0 and 2 point downward (if horizontal: north,
+             then east), column 1 = column 2 x column 0 (right-handed).
+    """
+    R = np.array(R, dtype=float, copy=True)
+    for j in (0, 2):
+        v = R[..., :, j]
+        vn, ve, vd = v[..., 0], v[..., 1], v[..., 2]
+        s = np.where(np.abs(vd) > eps, np.sign(vd), np.sign(vn))
+        s = np.where((np.abs(vd) <= eps) & (np.abs(vn) <= eps), np.sign(ve), s)
+        s = np.where(s == 0, 1.0, s)
+        R[..., :, j] = v * np.asarray(s)[..., None]
+    R[..., :, 1] = np.cross(R[..., :, 2], R[..., :, 0])
+    return R
+
+
 def static_stress_ned2enz(stress_ned):
     """
     [sigma_nn, sigma_ne, sigma_nd, sigma_ee, sigma_ed, sigma_dd] ->
