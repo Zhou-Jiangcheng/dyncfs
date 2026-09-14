@@ -971,6 +971,23 @@ def prepare_compute_cfs(config: CfsConfig):
                 pickle.dump(inp_list, fw)  # type: ignore
 
 
+def build_parallel_jobs(input_list, path_source_array, optimal_type, check_finished):
+    """
+    Convert the pickled input lists into positional args of the target function.
+    cal_cfs_dynamic_single_point_fm/_opt_rake have a `static_stress` argument
+    before `check_finish`, cal_cfs_dynamic_single_point_oop does not.
+    """
+    jobs = []
+    for args in input_list:
+        # [path_green, source_array, ...]
+        args = [args[0], path_source_array] + args[1:]
+        if optimal_type in (0, 1):
+            args = args + [None]  # static_stress
+        args = args + [check_finished]
+        jobs.append(args)
+    return jobs
+
+
 def compute_dynamic_cfs_parallel(config: CfsConfig):
     s = datetime.datetime.now()
     if config.multiprocessing_flag is None:
@@ -992,11 +1009,9 @@ def compute_dynamic_cfs_parallel(config: CfsConfig):
         ) as fr:
             input_list = pickle.load(fr)
 
-        jobs = []
-        for args in input_list:
-            # [path_green, source_array, ...]
-            args = [args[0], path_source_array] + args[1:] + [config.check_finished]
-            jobs.append(args)
+        jobs = build_parallel_jobs(
+            input_list, path_source_array, config.optimal_type, config.check_finished
+        )
 
         if config.optimal_type == 0:
             target = cal_cfs_dynamic_single_point_fm
@@ -1369,11 +1384,9 @@ def compute_dynamic_cfs_fix_depth_parallel(
     ) as fr:
         input_list = pickle.load(fr)
 
-    jobs = []
-    for args in input_list:
-        # [path_green, source_array, ...]
-        args = [args[0], path_source_array] + args[1:] + [config.check_finished]
-        jobs.append(args)
+    jobs = build_parallel_jobs(
+        input_list, path_source_array, config.optimal_type, config.check_finished
+    )
 
     if config.optimal_type == 0:
         target = cal_cfs_dynamic_single_point_fm
