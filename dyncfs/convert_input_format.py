@@ -62,122 +62,260 @@ def convert_usgs_basic2source_csvs(
         for i in range(inds_list[j][0], inds_list[j][1]):
             data.append(get_number_in_line(lines[i]))
         data = np.array(data)
-        data[:, -1] = data[:, -1] / 1e7
-        N_sub = len(data)
-        nt_cut_len_max = round(
-            (
-                round(np.max(data[:, -4]))
-                + round(np.max(data[:, -3]))
-                + round(np.max(data[:, -2]))
-            )
-            * srate_stf
-            + 1
-        )
-
-        sub_stfs = np.zeros([N_sub, nt_cut_len_max])
-        for i in range(N_sub):
-            start = round(data[i, -4] * srate_stf)
-            peak = round((data[i, -4] + data[i, -3]) * srate_stf)
-            end = round((data[i, -4] + data[i, -3] + data[i, -2]) * srate_stf)
-            sub_stfs[i, start:peak] = np.linspace(
-                0, peak - start - 1, peak - start, endpoint=True
-            )
-            sub_stfs[i, peak:end] = np.linspace(
-                end - peak, 1, end - peak, endpoint=True
-            )
-            sub_stfs[i, start:end] = (
-                sub_stfs[i, start:end]
-                / np.sum(sub_stfs[i, start:end] / srate_stf)
-                * data[i, -1]
-            )
-            # tau_s_p = (peak - start) / srate_stf
-            # t_s_p = np.linspace(0, tau_s_p, (peak - start))
-            # sub_stfs[i, start:peak] = np.sin((2 * np.pi) / (4 * tau_s_p) * t_s_p)
-            # tau_p_e = (end - peak) / srate_stf
-            # t_p_e = np.linspace(0, tau_p_e, (end - peak))
-            # sub_stfs[i, peak:end] = np.cos((2 * np.pi) / (4 * tau_p_e) * t_p_e)
-            # sub_stfs[i, start:end] = sub_stfs[i, start:end] / np.sum(
-            #     sub_stfs[i, start:end] / srate_stf) * data[i, -1]
-
-        #    [lat(deg), lon(deg), depth(km), strike(deg), dip(deg), rake(deg),
-        #    length_strike(km), length_dip(km), slip(m), m0(Nm),
-        #    stf(dimensionless)]
-        source_plane = np.zeros((N_sub, 10 + nt_cut_len_max))
-        # lat(deg), lon(deg), depth(km)
-        source_plane[:, :3] = data[:, :3]
-        # strike(deg), dip(deg), rake(deg)
-        source_plane[:, 3] = data[:, 5]
-        source_plane[:, 4] = data[:, 6]
-        source_plane[:, 5] = data[:, 4]
-        # length_strike(km), length_dip(km)
-        source_plane[:, 6] = Lx_list[j] * np.ones(N_sub)
-        source_plane[:, 7] = Ly_list[j] * np.ones(N_sub)
-        # slip(m)
-        source_plane[:, 8] = data[:, 3] / 1e2
-        # m0(Nm)
-        source_plane[:, 9] = data[:, -1]
-        # stf(dimensionless)
-        source_plane[:, 10:] = sub_stfs
-        order = (
-            np.arange(N_sub)
-            .reshape(source_shapes[j][1], source_shapes[j][0])
-            .T.flatten()
-        )
-        source_plane = source_plane[order, :]
-        df = pd.DataFrame(source_plane)
-        df.to_csv(
-            str(os.path.join(path_input_dir, "source_plane%d.csv" % (j + 1))),
-            header=False,
-            index=False,
+        # Lat. Lon. depth slip(cm) rake strike dip t_rup t_ris t_fal mo(dyne*cm)
+        write_source_plane_csv(
+            path_csv=os.path.join(path_input_dir, "source_plane%d.csv" % (j + 1)),
+            lat_lon_dep=data[:, :3],
+            strike=data[:, 5],
+            dip=data[:, 6],
+            rake=data[:, 4],
+            length_strike=Lx_list[j],
+            length_dip=Ly_list[j],
+            slip_m=data[:, 3] / 1e2,
+            m0=data[:, -1] / 1e7,
+            t_rup=data[:, -4],
+            t_ris=data[:, -3],
+            t_fal=data[:, -2],
+            srate_stf=srate_stf,
+            nx=source_shapes[j][0],
+            nz=source_shapes[j][1],
         )
 
     print("source_shapes=", source_shapes)
     print("convert usgs basic_inversion.param to input csv successfully")
+    return source_shapes
 
 
-def convert_fsp2source_csvs(path_fsp, path_input_dir, sampling_interval_stf):
+def create_triangle_stfs(t_rup, t_ris, t_fal, m0, srate_stf):
     """
-    to be continued
-    Read a .fsp file and export each SEGMENT block
-    into a separate CSV file (without header).
+    Moment rate functions of sub faults: linear increase during t_ris after the
+    rupture time t_rup, then linear decrease during t_fal. The integral of each
+    stf equals its m0.
+
+    :return: sub_stfs, shape (N_sub, nt)
+    """
+    t_rup, t_ris, t_fal, m0 = (np.asarray(v, dtype=float) for v in (t_rup, t_ris, t_fal, m0))
+    N_sub = len(m0)
+    # the longest t_rup + t_ris + t_fal of all sub faults
+    nt = int(np.ceil(np.max(t_rup + t_ris + t_fal) * srate_stf)) + 1
+    sub_stfs = np.zeros([N_sub, nt])
+    for i in range(N_sub):
+        start = round(t_rup[i] * srate_stf)
+        peak = round((t_rup[i] + t_ris[i]) * srate_stf)
+        end = round((t_rup[i] + t_ris[i] + t_fal[i]) * srate_stf)
+        sub_stfs[i, start:peak] = np.linspace(
+            0, peak - start - 1, peak - start, endpoint=True
+        )
+        sub_stfs[i, peak:end] = np.linspace(end - peak, 1, end - peak, endpoint=True)
+        area = np.sum(sub_stfs[i, start:end] / srate_stf)
+        if area > 0:
+            sub_stfs[i, start:end] = sub_stfs[i, start:end] / area * m0[i]
+        else:
+            # duration shorter than one sample: impulse carrying the moment
+            sub_stfs[i, start] = m0[i] * srate_stf
+    return sub_stfs
+
+
+def write_source_plane_csv(
+    path_csv,
+    lat_lon_dep,
+    strike,
+    dip,
+    rake,
+    length_strike,
+    length_dip,
+    slip_m,
+    m0,
+    t_rup,
+    t_ris,
+    t_fal,
+    srate_stf,
+    nx,
+    nz,
+):
+    """
+    Write one source_plane csv file.
+    Input rows are ordered row by row along dip (nz rows of nx sub faults), the
+    output rows are ordered along strike (nx columns of nz sub faults) as required
+    by source_shapes = [nx, nz].
+
+    Output columns:
+    lat(deg), lon(deg), depth(km), strike(deg), dip(deg), rake(deg),
+    length_strike(km), length_dip(km), slip(m), m0(Nm), stf(dimensionless)
+    """
+    N_sub = len(slip_m)
+    if nx * nz != N_sub:
+        raise ValueError(
+            "nx (%d) * nz (%d) != number of sub faults (%d)" % (nx, nz, N_sub)
+        )
+    sub_stfs = create_triangle_stfs(t_rup, t_ris, t_fal, m0, srate_stf)
+    source_plane = np.zeros((N_sub, 10 + sub_stfs.shape[1]))
+    source_plane[:, :3] = lat_lon_dep
+    source_plane[:, 3] = strike
+    source_plane[:, 4] = dip
+    source_plane[:, 5] = rake
+    source_plane[:, 6] = length_strike
+    source_plane[:, 7] = length_dip
+    source_plane[:, 8] = slip_m
+    source_plane[:, 9] = m0
+    source_plane[:, 10:] = sub_stfs
+    order = np.arange(N_sub).reshape(nz, nx).T.flatten()
+    source_plane = source_plane[order, :]
+    pd.DataFrame(source_plane).to_csv(str(path_csv), header=False, index=False)
+
+
+def _fsp_value(line, key):
+    """Value after 'key =' in a fsp header line, e.g. _fsp_value(line, 'STRK')."""
+    match = re.search(
+        r"(?<![A-Za-z_])%s\s*=\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)"
+        % re.escape(key),
+        line,
+    )
+    return float(match.group(1)) if match else None
+
+
+def convert_fsp2source_csvs(
+    path_fsp, path_input_dir, sampling_interval_stf, rise_ratio=0.5
+):
+    """
+    Convert a finite-fault model in FSP format (e.g. complete_inversion.fsp from
+    the USGS website, single or multiple segments) to source_plane[m].csv files.
+
+    Each SEGMENT is written to source_plane[k].csv (k starts from 1). The data
+    columns are recognized by the header line
+    "% LAT LON X==EW Y==NS Z SLIP RAKE TRUP RISE SF_MOMENT"; LAT, LON, Z, SLIP,
+    TRUP, RISE and SF_MOMENT are required, RAKE defaults to the RAKE in "% Mech".
 
     :param path_fsp: Path to a .fsp format file.
     :param path_input_dir: The same as the path_input parameter in the ini file.
     :param sampling_interval_stf: Sampling interval of source time function to compute CFS.
+    :param rise_ratio: The fsp format only provides the total duration RISE of the
+        slip-rate function of each sub fault. The stf increases linearly during
+        rise_ratio * RISE and decreases linearly during (1 - rise_ratio) * RISE,
+        the same shape as convert_usgs_basic2source_csvs with
+        t_ris = rise_ratio * RISE and t_fal = (1 - rise_ratio) * RISE.
+    :return: source_shapes, [[nx, nz], ...] of each segment (along strike, along dip)
 
     Output columns in each csv file:
     lat(deg), lon(deg), depth(km), strike(deg), dip(deg), rake(deg),
     length_strike(km), length_dip(km), slip(m), m0(Nm), stf(dimensionless)
     """
+    if not 0 <= rise_ratio <= 1:
+        raise ValueError("rise_ratio must be in [0, 1]")
     srate_stf = 1 / sampling_interval_stf
 
     with open(path_fsp, "r") as fr:
         lines = fr.readlines()
 
-    lines_paras_info = [[]]
-    for i in range(len(lines) - 1):
-        if "-----" in lines[i] and len(lines_paras_info[-1]) > 0:
-            lines_paras_info.append([])
-        if (lines[i][0] == "%") and ("-----" not in lines[i]):
-            lines_paras_info[-1].append(lines[i])
+    header = {}
+    segments = []
+    columns = None
+    for line in lines:
+        text = line.strip()
+        if not text:
+            continue
+        if text.startswith("%"):
+            upper = text.upper()
+            if upper.startswith("% MECH"):
+                header["strike"] = _fsp_value(upper, "STRK")
+                header["dip"] = _fsp_value(upper, "DIP")
+                header["rake"] = _fsp_value(upper, "RAKE")
+            elif upper.startswith("% SIZE"):
+                header["len"] = _fsp_value(upper, "LEN")
+                header["wid"] = _fsp_value(upper, "WID")
+            elif upper.startswith("% INVS"):
+                for key in ("NX", "NZ", "DX", "DZ", "NSG"):
+                    value = _fsp_value(upper, key)
+                    if value is not None:
+                        header[key.lower()] = value
+            elif "SEGMENT #" in upper and "STRIKE" in upper:
+                segments.append(
+                    {
+                        "strike": _fsp_value(upper, "STRIKE"),
+                        "dip": _fsp_value(upper, "DIP"),
+                        "rows": [],
+                    }
+                )
+            elif segments and upper.startswith("% LEN") and "WID" in upper:
+                segments[-1]["len"] = _fsp_value(upper, "LEN")
+                segments[-1]["wid"] = _fsp_value(upper, "WID")
+            elif " LAT " in upper + " " and " LON " in upper and " SLIP" in upper:
+                columns = upper.lstrip("%").split()
+            continue
+        if columns is None:
+            continue
+        values = get_number_in_line(text)
+        if len(values) != len(columns):
+            continue
+        if not segments:
+            # single segment model without SEGMENT blocks
+            segments.append(
+                {
+                    "strike": header.get("strike"),
+                    "dip": header.get("dip"),
+                    "len": header.get("len"),
+                    "wid": header.get("wid"),
+                    "rows": [],
+                }
+            )
+        segments[-1]["rows"].append(values)
 
-    fsp_info = {}
-    for i in range(len(lines_paras_info[0])):
-        if lines_paras_info[0][i][:5] == "% Loc":
-            lat, lon, dep = get_number_in_line(lines_paras_info[0][i])
-            fsp_info["lat"] = lat
-            fsp_info["lon"] = lon
-            fsp_info["dep"] = dep
-        if lines_paras_info[0][i][:6] == "% Size":
-            _, _, Mw, M0 = get_number_in_line(lines_paras_info[0][i])
-            fsp_info["mw"] = Mw
-            fsp_info["m0"] = M0
-    for i in range(len(lines_paras_info[1])):
-        if lines_paras_info[1][i][:11] == "% Invs : Dx":
-            Dx, Dy = get_number_in_line(lines_paras_info[1][i])
-            fsp_info["dx"] = Dx
-            fsp_info["dy"] = Dy
-    # print(fsp_info)
+    if columns is None or not segments:
+        raise ValueError("Can not find sub fault data in %s" % path_fsp)
+    col = {name: i for i, name in enumerate(columns)}
+    for name in ("LAT", "LON", "Z", "SLIP", "TRUP", "RISE", "SF_MOMENT"):
+        if name not in col:
+            raise ValueError("Column %s is required in the fsp file" % name)
+
+    source_shapes = []
+    k = 0
+    for seg in segments:
+        if not seg["rows"]:
+            continue
+        k += 1
+        data = np.array(seg["rows"])
+        N_sub = len(data)
+        if seg["strike"] is None or seg["dip"] is None:
+            raise ValueError("Strike/dip of segment %d not found" % k)
+        # rows are ordered along dip: sub faults in the first row share the depth
+        depth = data[:, col["Z"]]
+        nx = int(np.argmax(np.abs(depth - depth[0]) > 1e-3)) or N_sub
+        if N_sub % nx != 0:
+            raise ValueError(
+                "Can not determine the number of sub faults along strike of "
+                "segment %d (%d sub faults, %d in the first row)" % (k, N_sub, nx)
+            )
+        nz = N_sub // nx
+        length_strike = seg["len"] / nx if seg.get("len") else header.get("dx")
+        length_dip = seg["wid"] / nz if seg.get("wid") else header.get("dz")
+        rake = (
+            data[:, col["RAKE"]]
+            if "RAKE" in col
+            else np.full(N_sub, header.get("rake"))
+        )
+        rise = data[:, col["RISE"]]
+        write_source_plane_csv(
+            path_csv=os.path.join(path_input_dir, "source_plane%d.csv" % k),
+            lat_lon_dep=data[:, [col["LAT"], col["LON"], col["Z"]]],
+            strike=seg["strike"],
+            dip=seg["dip"],
+            rake=rake,
+            length_strike=length_strike,
+            length_dip=length_dip,
+            slip_m=data[:, col["SLIP"]],
+            m0=data[:, col["SF_MOMENT"]],
+            t_rup=data[:, col["TRUP"]],
+            t_ris=rise_ratio * rise,
+            t_fal=(1 - rise_ratio) * rise,
+            srate_stf=srate_stf,
+            nx=nx,
+            nz=nz,
+        )
+        source_shapes.append([nx, nz])
+
+    print("source_shapes=", source_shapes)
+    print("convert fsp to input csv successfully")
+    return source_shapes
 
 
 def convert_source_csvs2coulomb3(
