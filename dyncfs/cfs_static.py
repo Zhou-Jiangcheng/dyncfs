@@ -540,7 +540,7 @@ def compute_static_cfs_fix_depth(
     source_array = read_source_array(
         source_inds=config.source_inds,
         path_input=config.path_input,
-        shift2corner=True,
+        shift2corner=False,
     )
     if config.slip_thresh > 0:
         source_array = ignore_slip_source_array(source_array, config.slip_thresh)

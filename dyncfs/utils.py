@@ -135,7 +135,9 @@ def read_source_array(source_inds, path_input, shift2corner=False):
             shift_z = -0.5 * (d_vec_z * length_dip_km)
 
             source_plane[:, 0] = source_plane[:, 0] + shift_x / d2km
-            source_plane[:, 1] = source_plane[:, 1] + shift_y / d2km
+            source_plane[:, 1] = source_plane[:, 1] + shift_y / (
+                d2km * np.cos(np.deg2rad(source_plane[:, 0] - shift_x / d2km / 2))
+            )
             source_plane[:, 2] = source_plane[:, 2] + shift_z
 
         if ind_src == 0:
