@@ -163,6 +163,8 @@ def reshape_sub_faults(sub_faults, sub_fms, sub_lengths, num_strike, num_dip):
         tuple[np.ndarray, np.ndarray, np.ndarray]: X, Y, Z coordinate meshes of shape (num_strike + 1, num_dip + 1).
     """
 
+    # do not modify the input array of the caller
+    sub_faults = np.array(sub_faults, dtype=float, copy=True)
     strike_rad = np.deg2rad(sub_fms[:, 0])
     dip_rad = np.deg2rad(sub_fms[:, 1])
     length_strike_m = sub_lengths[:, 0]
@@ -371,7 +373,7 @@ def convert_earth_model_nd2nd_without_Q(path_nd, path_output, epsilon=0):
         if len(temp) > 1:
             data.append([float(_) for _ in temp[:-2]])
     data = np.array(data)
-    for i in range(len(data) - 2):
+    for i in range(len(data) - 1):
         if (
             (data[i, 0] == data[i + 1, 0])
             and (data[i, 2] != 0)
@@ -413,9 +415,12 @@ def read_nd(path_nd, with_Q=False):
 def read_layerd_material(path_layerd_dat, depth_in_km):
     # thickness, rho, vp, vs, qp, qs
     depth_in_m = depth_in_km * 1e3
-    dat = np.loadtxt(path_layerd_dat)
-    ind = np.argwhere((np.cumsum(dat[:, 0]) - depth_in_m) >= 0)[0][0]
-    return dat[ind]
+    dat = np.atleast_2d(np.loadtxt(path_layerd_dat))
+    inds = np.argwhere((np.cumsum(dat[:, 0]) - depth_in_m) >= 0)
+    if len(inds) == 0:
+        # deeper than the bottom interface, use the last layer (half-space)
+        return dat[-1]
+    return dat[inds[0][0]]
 
 
 def create_stf(tau, srate):

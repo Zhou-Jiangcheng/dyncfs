@@ -370,8 +370,8 @@ class CfsConfig(object):
             self.turning_point_filter = bool2int(
                 config["dynamic"].getboolean("turning_point_filter")
             )
-            self.turning_point_d1 = int(config["dynamic"]["turning_point_d1"])
-            self.turning_point_d2 = int(config["dynamic"]["turning_point_d2"])
+            self.turning_point_d1 = float(config["dynamic"]["turning_point_d1"])
+            self.turning_point_d2 = float(config["dynamic"]["turning_point_d2"])
             self.gravity_fc = float(config["dynamic"]["gravity_fc"])
             self.gravity_harmonic = int(config["dynamic"]["gravity_harmonic"])
             self.cal_sph = bool2int(config["dynamic"].getboolean("cal_sph"))
