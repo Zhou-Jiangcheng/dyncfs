@@ -165,10 +165,10 @@ def cal_cfs_static_single_point_opt_rake(
 
     :return: n.flatten(), d.flatten(), sigma, tau, cfs, rake
     """
-    strike, dip = np.deg2rad(obs_strike), np.deg2rad(obs_dip)
-    sin_strike, cos_strike = np.sin(strike), np.cos(strike)
-    sin_dip, cos_dip = np.sin(dip), np.cos(dip)
-    n = np.array([-sin_dip * sin_strike, -sin_dip * cos_strike, -cos_dip])
+    # n: plane normal (NED); u: rake=0 direction; v: rake=90 direction
+    n, u = plane2nd(obs_strike, obs_dip, 0.0)
+    _, v = plane2nd(obs_strike, obs_dip, 90.0)
+    n, u, v = n.flatten(), u.flatten(), v.flatten()
 
     sigma_tensor = tensor2full_tensor_matrix(mt=np.array(stress), flag="ned")
     tectonic_stress_tensor = tensor2full_tensor_matrix(
@@ -176,17 +176,16 @@ def cal_cfs_static_single_point_opt_rake(
     )
     sigma_tensor_sum = sigma_tensor + tectonic_stress_tensor
 
-    sigma_vector_sum = np.dot(sigma_tensor_sum, n)
-    sigma_sum = np.dot(sigma_vector_sum.T, n)[0][0]
+    # optimal slip direction: shear traction of the total stress on the plane
+    sigma_vector_sum = sigma_tensor_sum @ n
+    sigma_sum = sigma_vector_sum @ n
     d = sigma_vector_sum - sigma_sum * n
-    d = d / np.linalg.norm(d)
-    rake = np.rad2deg(np.arcsin(d[2] / sin_dip))
-    if rake > 180:
-        rake = rake - 360
+    d = d / (np.linalg.norm(d) + 1e-20)
+    rake = np.rad2deg(np.arctan2(d @ v, d @ u))
 
-    sigma_vector = np.dot(sigma_tensor, n)
-    sigma = np.dot(sigma_vector.T, n)[0][0]
-    tau = np.dot(sigma_vector.T, d)[0][0]
+    sigma_vector = sigma_tensor @ n
+    sigma = sigma_vector @ n
+    tau = sigma_vector @ d
 
     if B_pore == 0:
         cfs = cal_coulomb_failure_stress(norm_stress=sigma, shear_stress=tau, mu_f=mu_f)
@@ -424,8 +423,8 @@ def compute_static_cfs(config: CfsConfig):
                 % ind_obs,
             ):
                 n, d, sigma, tau, cfs, rake = cal_cfs_static_single_point_opt_rake(
-                    obs_strike=obs_plane[i, 4],
-                    obs_dip=obs_plane[i, 5],
+                    obs_strike=obs_plane[i, 3],
+                    obs_dip=obs_plane[i, 4],
                     stress=stress_tensor_array[i, :],
                     tectonic_stress=config.tectonic_stress,
                     mu_f=config.mu_f,
@@ -445,7 +444,7 @@ def compute_static_cfs(config: CfsConfig):
                 (cfs_array, "cfs_os_static"),
                 (rake_array, "rake_os_static"),
             ]
-        elif not config.optimal_type == 2:
+        elif config.optimal_type == 2:
             n1_array = np.zeros((N, 3))
             d1_array = np.zeros((N, 3))
             norm_stress1_array = np.zeros(N)
@@ -547,7 +546,7 @@ def compute_static_cfs_fix_depth(
         source_array = ignore_slip_source_array(source_array, config.slip_thresh)
     if config.cut_stf > 0:
         source_array = cut_stf_modify_source_array(source_array, config.cut_stf)
-    if optimal_type == 0 and receiver_mechanism is None:
+    if optimal_type in (0, 1) and receiver_mechanism is None:
         mt_mean = np.zeros(6)
         for i in range(len(source_array)):
             mt_i = check_convert_fm(source_array[i, 3:6])
@@ -573,6 +572,13 @@ def compute_static_cfs_fix_depth(
         print(
             "receiver_mechanism is (strike, dip, rake)=(%.2f, %.2f, %.2f) deg."
             % (receiver_mechanism[0], receiver_mechanism[1], receiver_mechanism[2])
+        )
+    elif optimal_type == 1:
+        obs_plane[:, 3] = obs_plane[:, 3] + receiver_mechanism[0]
+        obs_plane[:, 4] = obs_plane[:, 4] + receiver_mechanism[1]
+        print(
+            "receiver plane is (strike, dip)=(%.2f, %.2f) deg."
+            % (receiver_mechanism[0], receiver_mechanism[1])
         )
 
     M = len(source_array)
@@ -669,12 +675,12 @@ def compute_static_cfs_fix_depth(
         rake_array = np.zeros(N)
         for i in tqdm(
             range(N),
-            desc="Computing static Coulomb Failure Stress change (OOP) at %.2f km depth"
+            desc="Computing static Coulomb Failure Stress change (optimal rake) at %.2f km depth"
             % obs_depth,
         ):
             n, d, sigma, tau, cfs, rake = cal_cfs_static_single_point_opt_rake(
-                obs_strike=obs_plane[i, 4],
-                obs_dip=obs_plane[i, 5],
+                obs_strike=obs_plane[i, 3],
+                obs_dip=obs_plane[i, 4],
                 stress=stress_tensor_array[i, :],
                 tectonic_stress=config.tectonic_stress,
                 mu_f=config.mu_f,
@@ -687,12 +693,12 @@ def compute_static_cfs_fix_depth(
             cfs_array[i] = cfs
             rake_array[i] = rake
         tasks = [
-            (n_array, "normal_vector_static_os"),
-            (d_array, "rupture_vector_static_os"),
-            (norm_stress_array, "normal_stress_static_os"),
-            (shear_stress_array, "shear_stress_static_os"),
-            (cfs_array, "cfs_static"),
-            (rake_array, "rake_static_os"),
+            (n_array, "normal_vector_os_static"),
+            (d_array, "rupture_vector_os_static"),
+            (norm_stress_array, "normal_stress_os_static"),
+            (shear_stress_array, "shear_stress_os_static"),
+            (cfs_array, "cfs_os_static"),
+            (rake_array, "rake_os_static"),
         ]
     elif optimal_type == 2:
         n1_array = np.zeros((N, 3))
