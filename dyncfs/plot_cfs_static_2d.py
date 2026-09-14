@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.colors import Normalize
 
-from .utils import cal_grid_num
+from .utils import cal_grid_num, cal_geo_ticks
 
 plt.rcParams.update(
     {
@@ -131,11 +131,14 @@ def plot_cfs_static_fix_depth(
     zoom_lon=1,
     show=True,
     save=True,
+    delta_tick: float = None,
 ):
+    """
+    :param delta_tick: Interval of longitude/latitude ticks (deg), chosen
+                       automatically if None.
+    """
     if not show:
         matplotlib.use("Agg")
-    else:
-        matplotlib.use("tkagg")
     Nx = cal_grid_num(obs_lat_range, obs_delta_lat)
     Ny = cal_grid_num(obs_lon_range, obs_delta_lon)
     if color_saturation is None:
@@ -144,8 +147,6 @@ def plot_cfs_static_fix_depth(
 
     sub_stress: np.ndarray = sub_stress.reshape(Nx, Ny)
     sub_stress = zoom(sub_stress, [zoom_lat, zoom_lon])
-    obs_delta_lat = obs_delta_lat / zoom_lat
-    obs_delta_lon = obs_delta_lon / zoom_lon
 
     cmap = matplotlib.colormaps["seismic"]
     norm = Normalize(vmin=tick_range[0], vmax=tick_range[1])
@@ -181,22 +182,18 @@ def plot_cfs_static_fix_depth(
     ax.set_xlabel("Longitude (deg)")
     ax.set_ylabel("Latitude (deg)")
 
-    delta_tick = 0.5  # deg
-    lon_start = np.ceil(obs_lon_range[0] * 1 / delta_tick) / round(1 / delta_tick)
-    lon_end = obs_lon_range[1]
-    lont_cuticks = np.arange(lon_start, lon_end + 1e-6, delta_tick)
-
-    lat_start = np.ceil(obs_lat_range[0] * 1 / delta_tick) / round(1 / delta_tick)
-    lat_end = obs_lat_range[1]
-    lat_ticks = np.arange(lat_start, lat_end + 1e-6, delta_tick)
-
-    xtick_pos = (lont_cuticks - obs_lon_range[0]) / obs_delta_lon
-    ytick_pos = (lat_ticks - obs_lat_range[0]) / obs_delta_lat
-
+    # grid points span obs_lat_range/obs_lon_range linearly (also after zooming);
+    # rows are flipped (C[::-1]) so that row 0 is the northernmost latitude
+    xtick_pos, _, xtick_labels = cal_geo_ticks(
+        obs_lon_range, sub_stress.shape[1], delta_tick
+    )
+    ytick_pos, _, ytick_labels = cal_geo_ticks(
+        obs_lat_range, sub_stress.shape[0], delta_tick, reverse=True
+    )
     ax.set_xticks(xtick_pos)
-    ax.set_xticklabels([f"{lt:.1f}" for lt in lont_cuticks])
+    ax.set_xticklabels(xtick_labels)
     ax.set_yticks(ytick_pos)
-    ax.set_yticklabels([f"{la:.1f}" for la in lat_ticks[::-1]])
+    ax.set_yticklabels(ytick_labels)
 
     # ax.text(xlim[0] + 1, ylim[1] + 1, "Static", ha="left", va="top", weight="bold")
     title = "Static Coulomb Failure Stress Change at Depth %.2f km" % obs_depth

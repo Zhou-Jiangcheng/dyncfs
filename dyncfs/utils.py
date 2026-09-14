@@ -456,6 +456,38 @@ def cal_grid_num(value_range, delta, decimals=8):
     return int(np.ceil(ratio) + 1)
 
 
+def cal_geo_ticks(value_range, n_grid, delta_tick=None, reverse=False):
+    """
+    Tick positions and labels for a plot axis whose n_grid cells (centered at
+    integer positions 0..n_grid-1) span value_range linearly.
+
+    :param value_range: [min, max] of the coordinate (deg).
+    :param n_grid: Number of grid points along the axis (after zooming).
+    :param delta_tick: Tick interval (deg), chosen automatically if None.
+    :param reverse: If True, position 0 corresponds to value_range[1].
+    :return: positions, tick_values, tick_labels
+    """
+    v0, v1 = float(value_range[0]), float(value_range[1])
+    span = v1 - v0
+    if delta_tick is None:
+        delta_tick = 10.0
+        for dt in (0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0):
+            if span / dt <= 6:
+                delta_tick = dt
+                break
+    start = np.ceil(round(v0 / delta_tick, 8)) * delta_tick
+    ticks = np.arange(start, v1 + 1e-9 * max(1.0, abs(v1)), delta_tick)
+    step = span / (n_grid - 1) if n_grid > 1 else 1.0
+    if reverse:
+        positions = (v1 - ticks) / step
+    else:
+        positions = (ticks - v0) / step
+    text = "%g" % delta_tick
+    decimals = len(text.split(".")[1]) if "." in text else 0
+    labels = ["%.*f" % (decimals, t) for t in ticks]
+    return positions, ticks, labels
+
+
 def orient_principal_axes(R, eps=1e-12):
     """
     Remove the arbitrary signs of eigenvectors returned by LAPACK, so that the

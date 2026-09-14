@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.colors import Normalize
 
-from .utils import cal_grid_num
+from .utils import cal_grid_num, cal_geo_ticks
 
 plt.rcParams.update(
     {
@@ -36,7 +36,6 @@ def plot_cfs_dynamic_2d_nt(
     save: bool = True,
 ):
     if not show:
-        original_backend = matplotlib.get_backend()
         matplotlib.use("Agg")
     sub_stress = pd.read_csv(
         str(
@@ -87,18 +86,18 @@ def plot_cfs_dynamic_2d_nt(
     m = cm.ScalarMappable(cmap=cmap)
     m.set_clim(tick_range[0], tick_range[1])
     cbar = fig.colorbar(m, cax=cax)
-    cbar.set_label("Static Coulomb Failure Stress Change (MPa)")
+    cbar.set_label("Dynamic Coulomb Failure Stress Change (MPa)")
 
     ax.set_xlabel("Along Strike (km)")
     ax.set_ylabel("Along Dip (km)")
 
     xt = np.arange(round(ax.get_xlim()[1]))
-    xl = [f"{float(i) * sub_length_dip_km:.1f}" for i in xt]
+    xl = [f"{float(i) * sub_length_strike_km:.1f}" for i in xt]
     ax.set_xticks(xt[::tick_interval] - 0.5)
     ax.set_xticklabels(xl[::tick_interval])
 
     yt = np.arange(round(ax.get_ylim()[0]))
-    yl = [f"{float(i) * sub_length_strike_km:.1f}" for i in yt]
+    yl = [f"{float(i) * sub_length_dip_km:.1f}" for i in yt]
     ax.set_yticks(yt[::tick_interval] - 0.5)
     ax.set_yticklabels(yl[::tick_interval])
 
@@ -142,8 +141,11 @@ def plot_cfs_dynamic_2d_series(
     save: bool = True,
 ):
     """
-    Slip distribution plot, cumulative slip before nt_cut.
+    Dynamic CFS distributions on the obs plane at the time points in nt_list.
+    color_saturation is in MPa.
     """
+    if not show:
+        matplotlib.use("Agg")
     sub_stress = (
         pd.read_csv(
             str(
@@ -159,12 +161,15 @@ def plot_cfs_dynamic_2d_series(
         ).to_numpy()
         / 1e6
     )
+    nt_list = list(nt_list)
     if color_saturation is None:
-        vmin = -np.max(np.abs(sub_stress[:, : nt_list[-1]]))
-        vmax = -vmin
+        vmax = np.max(np.abs(sub_stress[:, nt_list]))
+        vmin = -vmax
     else:
         vmin = -color_saturation
         vmax = color_saturation
+    cmap = matplotlib.colormaps["seismic"]
+    norm = Normalize(vmin=vmin, vmax=vmax)
     zoom_factors = [zoom_strike, zoom_dip]
 
     time_sec_0 = nt_list[0] * sampling_interval_cfs
@@ -176,42 +181,47 @@ def plot_cfs_dynamic_2d_series(
     save_path = os.path.join(
         path_output, f"cfs_dynamic_2d_{nt_list[0]}_{nt_list[-1]}_plane_{ind_obs}.png"
     )
-    nrows = int(np.floor(np.sqrt(len(nt_list))))
-    ncols = len(nt_list) // nrows
+    n_panels = len(nt_list)
+    nrows = max(1, int(np.floor(np.sqrt(n_panels))))
+    ncols = int(np.ceil(n_panels / nrows))
     scale = 15 / ncols
     fig, axes = plt.subplots(
         nrows=nrows,
         ncols=ncols,
         figsize=(ncols * scale, nrows * obs_shape[1] / obs_shape[0] * scale),
+        squeeze=False,
     )
+    sub_length_strike_zoom = sub_length_strike_km / zoom_strike
+    sub_length_dip_zoom = sub_length_dip_km / zoom_dip
     for i_row in range(nrows):
         for i_col in range(ncols):
             ax = axes[i_row, i_col]
             ind = i_row * ncols + i_col
+            if ind >= n_panels:
+                ax.set_axis_off()
+                continue
             nt = nt_list[ind]
             sub_stress_nt = sub_stress[:, nt]
-            data = sub_stress_nt.reshape(obs_shape)  # unit: Pa
+            data = sub_stress_nt.reshape(obs_shape)  # unit: MPa
             data: np.ndarray = zoom(data, zoom_factors)
-            # print(nt_cut, np.max(data))
 
             X, Y = np.meshgrid(np.arange(data.shape[0]), np.arange(data.shape[1]))
-            norm = Normalize(vmin=vmin, vmax=vmax)
-            cmap = cm.get_cmap("seismic")
             ax.pcolormesh(X.T, Y.T, data, cmap=cmap, norm=norm, shading="auto")
             ax.invert_yaxis()
             ax.set_aspect(1)
             if i_col == 0:
                 ax.set_ylabel("Along Dip (km)")
                 yt = np.arange(round(ax.get_ylim()[0]))
-                yl = [f"{float(i) * sub_length_strike_km:.1f}" for i in yt]
+                yl = [f"{float(i) * sub_length_dip_zoom:.1f}" for i in yt]
                 ax.set_yticks(yt[::tick_interval] - 0.5)
                 ax.set_yticklabels(yl[::tick_interval])
             else:
                 ax.set_yticks([])
-            if i_row == nrows - 1:
+            # bottom panel of each column
+            if ind + ncols >= n_panels:
                 ax.set_xlabel("Along Strike (km)")
                 xt = np.arange(round(ax.get_xlim()[1]))
-                xl = [f"{float(i) * sub_length_dip_km:.1f}" for i in xt]
+                xl = [f"{float(i) * sub_length_strike_zoom:.1f}" for i in xt]
                 ax.set_xticks(xt[::tick_interval] - 0.5)
                 ax.set_xticklabels(xl[::tick_interval])
             else:
@@ -225,7 +235,6 @@ def plot_cfs_dynamic_2d_series(
                 weight="bold",
             )
     cax = fig.add_axes((0.925, 0.2, 0.025, 0.6))
-    cmap = cm.get_cmap("seismic")
     m = cm.ScalarMappable(cmap=cmap)
     m.set_clim(vmin, vmax)
     cbar = fig.colorbar(m, cax=cax)
@@ -246,6 +255,8 @@ def plot_cfs_dynamic_2d_series(
     if show:
         plt.ion()
         plt.show()
+    else:
+        plt.close(fig)
 
 
 def plot_cfs_dynamic_fix_depth_one_time_point(
@@ -262,7 +273,14 @@ def plot_cfs_dynamic_fix_depth_one_time_point(
     zoom_lon: int = 1,
     show: bool = True,
     save: bool = True,
+    delta_tick: float = None,
 ):
+    """
+    :param delta_tick: Interval of longitude/latitude ticks (deg), chosen
+                       automatically if None.
+    """
+    if not show:
+        matplotlib.use("Agg")
     Nx = cal_grid_num(obs_lat_range, obs_delta_lat)
     Ny = cal_grid_num(obs_lon_range, obs_delta_lon)
 
@@ -284,8 +302,6 @@ def plot_cfs_dynamic_fix_depth_one_time_point(
     tick_range = [-color_saturation / 1e6, color_saturation / 1e6]
     sub_stress: np.ndarray = sub_stress.reshape(Nx, Ny)
     sub_stress = zoom(sub_stress, [zoom_lat, zoom_lon])
-    obs_delta_lat = obs_delta_lat / zoom_lat
-    obs_delta_lon = obs_delta_lon / zoom_lon
 
     cmap = matplotlib.colormaps["seismic"]
     norm = Normalize(vmin=tick_range[0], vmax=tick_range[1])
@@ -301,7 +317,6 @@ def plot_cfs_dynamic_fix_depth_one_time_point(
         np.arange(sub_stress.shape[1]),
     )
     C = sub_stress / 1e6
-    print(sub_stress.shape)
     # exchange x,y from lat,lon to lon,lat
     ax.pcolormesh(
         Y.T,
@@ -326,22 +341,18 @@ def plot_cfs_dynamic_fix_depth_one_time_point(
     ax.set_xlabel("Longitude (deg)")
     ax.set_ylabel("Latitude (deg)")
 
-    delta_tick = 0.5  # deg
-    lon_start = np.ceil(obs_lon_range[0] * 1 / delta_tick) / round(1 / delta_tick)
-    lon_end = obs_lon_range[1]
-    lont_cuticks = np.arange(lon_start, lon_end + 1e-6, delta_tick)
-
-    lat_start = np.ceil(obs_lat_range[0] * 1 / delta_tick) / round(1 / delta_tick)
-    lat_end = obs_lat_range[1]
-    lat_ticks = np.arange(lat_start, lat_end + 1e-6, delta_tick)
-
-    xtick_pos = (lont_cuticks - obs_lon_range[0]) / obs_delta_lon
-    ytick_pos = (lat_ticks - obs_lat_range[0]) / obs_delta_lat
-
+    # grid points span obs_lat_range/obs_lon_range linearly (also after zooming);
+    # rows are flipped (C[::-1]) so that row 0 is the northernmost latitude
+    xtick_pos, _, xtick_labels = cal_geo_ticks(
+        obs_lon_range, sub_stress.shape[1], delta_tick
+    )
+    ytick_pos, _, ytick_labels = cal_geo_ticks(
+        obs_lat_range, sub_stress.shape[0], delta_tick, reverse=True
+    )
     ax.set_xticks(xtick_pos)
-    ax.set_xticklabels([f"{lt:.1f}" for lt in lont_cuticks])
+    ax.set_xticklabels(xtick_labels)
     ax.set_yticks(ytick_pos)
-    ax.set_yticklabels([f"{la:.1f}" for la in lat_ticks[::-1]])
+    ax.set_yticklabels(ytick_labels)
 
     # ax.text(xlim[0] + 1, ylim[1] + 1, "Static", ha="left", va="top", weight="bold")
     title = "Dynamic Coulomb Failure Stress Change at Depth: %.2f km, Time: %.2f s" % (

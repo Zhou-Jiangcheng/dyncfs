@@ -151,16 +151,27 @@ def plot_slip_2d_series(
     save: bool = True,
 ):
     """
-    Slip distribution plot, cumulative slip before nt_cut.
+    Slip distribution plot, cumulative slip before each nt_cut in nt_cut_list.
+    nt_cut <= 0 means the final slip.
     """
+    if not show:
+        matplotlib.use("Agg")
     fp = os.path.join(path_input, f"source_plane{ind_source}.csv")
     arr = pd.read_csv(fp, header=None, index_col=False).to_numpy()
+    nt_cut_list = list(nt_cut_list)
     vmin = 0
     if color_saturation is None:
         vmax = np.max(arr[:, 8])
     else:
         vmax = color_saturation
     zoom_factors = [zoom_strike, zoom_dip]
+    colors_slip = ["blue", "cyan", "orange", "red"]
+    cmap = LinearSegmentedColormap.from_list("custom_cmap", colors_slip)
+    norm = Normalize(vmin=vmin, vmax=vmax)
+    # moment of the full stf, the stf array itself is never modified
+    sub_stfs = arr[:, 10:]
+    m0_origin = np.sum(sub_stfs, axis=1)
+    inds_not_0 = m0_origin != 0
 
     time_sec_0 = nt_cut_list[0] * sampling_interval_stf
     time_sec_1 = nt_cut_list[-1] * sampling_interval_stf
@@ -171,50 +182,54 @@ def plot_slip_2d_series(
     save_path = os.path.join(
         path_input, f"slip_2d_{nt_cut_list[0]}_{nt_cut_list[-1]}_plane_{ind_source}.png"
     )
-    nrows = int(np.floor(np.sqrt(len(nt_cut_list))))
-    ncols = len(nt_cut_list) // nrows
+    n_panels = len(nt_cut_list)
+    nrows = max(1, int(np.floor(np.sqrt(n_panels))))
+    ncols = int(np.ceil(n_panels / nrows))
     scale = 15 / ncols
     fig, axes = plt.subplots(
         nrows=nrows,
         ncols=ncols,
         figsize=(ncols * scale, nrows * source_shape[1] / source_shape[0] * scale),
+        squeeze=False,
     )
+    sub_length_strike_zoom = sub_length_strike_km / zoom_strike
+    sub_length_dip_zoom = sub_length_dip_km / zoom_dip
     for i_row in range(nrows):
         for i_col in range(ncols):
             ax = axes[i_row, i_col]
             ind = i_row * ncols + i_col
+            if ind >= n_panels:
+                ax.set_axis_off()
+                continue
             nt_cut = nt_cut_list[ind]
-            # Compute cut_ratio and then multiply by slip
-            orig = arr[:, 10:].copy()
-            arr[:, 10 + nt_cut :] = 0
-            m0_o = np.sum(orig, axis=1)
-            m0_c = np.sum(arr[:, 10:], axis=1)
-            ratio = np.zeros_like(m0_c)
-            nz = m0_o != 0
-            ratio[nz] = m0_c[nz] / m0_o[nz]
-            slip = ratio * arr[:, 8]
+            # cumulative slip = final slip * (moment before nt_cut / total moment)
+            if nt_cut > 0:
+                m0_cut = np.sum(sub_stfs[:, :nt_cut], axis=1)
+                ratio = np.zeros_like(m0_cut)
+                ratio[inds_not_0] = m0_cut[inds_not_0] / m0_origin[inds_not_0]
+                slip = ratio * arr[:, 8]
+            else:
+                slip = arr[:, 8]
             data = slip.reshape(source_shape)  # unit: m
             data: np.ndarray = zoom(data, zoom_factors)
-            # print(nt_cut, np.max(data))
 
             X, Y = np.meshgrid(np.arange(data.shape[0]), np.arange(data.shape[1]))
-            norm = Normalize(vmin=vmin, vmax=vmax)
-            cmap = cm.get_cmap("seismic")
             ax.pcolormesh(X.T, Y.T, data, cmap=cmap, norm=norm, shading="auto")
             ax.invert_yaxis()
             ax.set_aspect(1)
             if i_col == 0:
                 ax.set_ylabel("Along Dip (km)")
                 yt = np.arange(round(ax.get_ylim()[0]))
-                yl = [f"{float(i) * sub_length_strike_km:.1f}" for i in yt]
+                yl = [f"{float(i) * sub_length_dip_zoom:.1f}" for i in yt]
                 ax.set_yticks(yt[::tick_interval] - 0.5)
                 ax.set_yticklabels(yl[::tick_interval])
             else:
                 ax.set_yticks([])
-            if i_row == nrows - 1:
+            # bottom panel of each column
+            if ind + ncols >= n_panels:
                 ax.set_xlabel("Along Strike (km)")
                 xt = np.arange(round(ax.get_xlim()[1]))
-                xl = [f"{float(i) * sub_length_dip_km:.1f}" for i in xt]
+                xl = [f"{float(i) * sub_length_strike_zoom:.1f}" for i in xt]
                 ax.set_xticks(xt[::tick_interval] - 0.5)
                 ax.set_xticklabels(xl[::tick_interval])
             else:
@@ -229,8 +244,6 @@ def plot_slip_2d_series(
             )
     cax = fig.add_axes((0.925, 0.2, 0.025, 0.6))
 
-    colors_slip = ["blue", "cyan", "orange", "red"]
-    cmap = LinearSegmentedColormap.from_list("custom_cmap", colors_slip)
     m = cm.ScalarMappable(cmap=cmap)
     m.set_clim(vmin, vmax)
 
@@ -252,3 +265,5 @@ def plot_slip_2d_series(
     if show:
         plt.ion()
         plt.show()
+    else:
+        plt.close(fig)
