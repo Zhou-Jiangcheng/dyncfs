@@ -278,7 +278,7 @@ def synthesize_dynamic_stress(
                 tc2=tc2,
                 ratio_interp=0,
             )
-            stress_enz[:, i_cor] = np.sum(stress_rate_enz[:, i_cor]) / srate_cfs
+            stress_enz[:, i_cor] = np.cumsum(stress_rate_enz[:, i_cor]) / srate_cfs
     elif max_slowness is not None:
         tc2 = round(
             dist_km_max * max_slowness
