@@ -446,6 +446,16 @@ def group_planes(strike_array):
     return lengths
 
 
+def cal_grid_num(value_range, delta, decimals=8):
+    """
+    Number of grid points in the closed interval value_range with interval delta.
+    The ratio is rounded before ceil to avoid an extra point caused by floating
+    point errors, e.g. (27.3 - 26.9) / 0.01 = 40.00000000000021.
+    """
+    ratio = round((value_range[1] - value_range[0]) / delta, decimals)
+    return int(np.ceil(ratio) + 1)
+
+
 def bool2int(input_bool):
     if input_bool:
         return 1

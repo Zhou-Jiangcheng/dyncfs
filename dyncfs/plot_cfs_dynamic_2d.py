@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.colors import Normalize
 
+from .utils import cal_grid_num
+
 plt.rcParams.update(
     {
         "font.size": 10,
@@ -261,8 +263,8 @@ def plot_cfs_dynamic_fix_depth_one_time_point(
     show: bool = True,
     save: bool = True,
 ):
-    Nx = int(np.ceil((obs_lat_range[1] - obs_lat_range[0]) / obs_delta_lat) + 1)
-    Ny = int(np.ceil((obs_lon_range[1] - obs_lon_range[0]) / obs_delta_lon) + 1)
+    Nx = cal_grid_num(obs_lat_range, obs_delta_lat)
+    Ny = cal_grid_num(obs_lon_range, obs_delta_lon)
 
     sub_stress = pd.read_csv(
         str(

@@ -38,7 +38,8 @@ from .utils import (
     bool2int,
     ignore_slip_source_array,
     cut_stf_modify_source_array,
-    spherical_dist_azimuth_km
+    spherical_dist_azimuth_km,
+    cal_grid_num,
 )
 
 
@@ -1254,18 +1255,8 @@ def prepare_compute_cfs_fix_depth(
     path_results_each = os.path.join(config.path_output, "grn_d", "results_each")
     os.makedirs(path_results_each, exist_ok=True)
 
-    Nx = int(
-        np.ceil(
-            (config.obs_lat_range[1] - config.obs_lat_range[0]) / config.obs_delta_lat
-        )
-        + 1
-    )
-    Ny = int(
-        np.ceil(
-            (config.obs_lon_range[1] - config.obs_lon_range[0]) / config.obs_delta_lon
-        )
-        + 1
-    )
+    Nx = cal_grid_num(config.obs_lat_range, config.obs_delta_lat)
+    Ny = cal_grid_num(config.obs_lon_range, config.obs_delta_lon)
 
     obs_plane = np.zeros((Nx * Ny, 6))
     obs_plane[:, 2] = obs_plane[:, 2] + obs_depth
@@ -1477,8 +1468,8 @@ def compute_dynamic_cfs_fix_depth_sequential(
     path_results_each = os.path.join(config.path_output, "grn_d", "results_each")
     os.makedirs(path_results_each, exist_ok=True)
 
-    Nx = int(np.ceil((obs_lat_range[1] - obs_lat_range[0]) / obs_delta_lat) + 1)
-    Ny = int(np.ceil((obs_lon_range[1] - obs_lon_range[0]) / obs_delta_lon) + 1)
+    Nx = cal_grid_num(obs_lat_range, obs_delta_lat)
+    Ny = cal_grid_num(obs_lon_range, obs_delta_lon)
 
     obs_plane = np.zeros((Nx * Ny, 6))
     obs_plane[:, 2] = obs_plane[:, 2] + obs_depth

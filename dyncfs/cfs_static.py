@@ -31,6 +31,7 @@ from .utils import (
     ignore_slip_source_array,
     cut_stf_modify_source_array,
     pairwise_spherical_dist_azimuth_km,
+    cal_grid_num,
 )
 
 
@@ -554,8 +555,8 @@ def compute_static_cfs_fix_depth(
             mt_mean = mt_mean + mt_i
         receiver_mechanism = mt2plane(mt=mt_mean)[0]
 
-    Nx = int(np.ceil((obs_lat_range[1] - obs_lat_range[0]) / obs_delta_lat) + 1)
-    Ny = int(np.ceil((obs_lon_range[1] - obs_lon_range[0]) / obs_delta_lon) + 1)
+    Nx = cal_grid_num(obs_lat_range, obs_delta_lat)
+    Ny = cal_grid_num(obs_lon_range, obs_delta_lon)
 
     obs_plane = np.zeros((Nx * Ny, 6))
     lat_array = np.linspace(obs_lat_range[0], obs_lat_range[1], Nx)
