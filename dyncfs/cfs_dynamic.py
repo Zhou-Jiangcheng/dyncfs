@@ -576,30 +576,28 @@ def cal_cfs_dynamic_single_point_opt_rake(
     u = d_r0.flatten()  # (3,) - along strike
     v = d_r90.flatten()  # (3,) - along dip
 
-    # Traction on plane: t = S * n
-    # Use the existing helper to do batched multiplication from (N,6) to (N,3)
-    sigma_vec = cal_stress_vector_ned_dynamic(stress_total, n)  # (N,3)
-    # Normal stress on plane: sigma_n = n · t
-    sigma_n = np.einsum("ij,j->i", sigma_vec, n)  # (N,)
-
-    # Shear traction vector lying in the plane: s = t - (sigma_n)*n
-    s_vec = sigma_vec - sigma_n[:, None] * n[None, :]  # (N,3)
-    # Shear magnitude and optimal slip direction (aligned with s_vec)
+    # Optimal slip direction from the total stress (dynamic + tectonic):
+    # shear traction on the plane s = t - (n·t)*n, with t = S_total * n
+    sigma_vec_total = cal_stress_vector_ned_dynamic(stress_total, n)  # (N,3)
+    sigma_n_total = np.einsum("ij,j->i", sigma_vec_total, n)  # (N,)
+    s_vec = sigma_vec_total - sigma_n_total[:, None] * n[None, :]  # (N,3)
     s_norm = np.linalg.norm(s_vec, axis=1)  # (N,)
     # Avoid division by zero
     eps = 1e-20
     d_opt = s_vec / (s_norm[:, None] + eps)  # (N,3)
-    # Shear stress scalar with optimal rake: tau = |s|
-    tau = s_norm  # (N,)
+
+    # Stress changes (earthquake-induced only) projected on n and d_opt,
+    # consistent with cal_cfs_static_single_point_opt_rake
+    sigma_vec = cal_stress_vector_ned_dynamic(stress_ned, n)  # (N,3)
+    sigma_n = np.einsum("ij,j->i", sigma_vec, n)  # (N,)
+    tau = np.einsum("ij,ij->i", sigma_vec, d_opt)  # (N,)
 
     if B_pore == 0:
         cfs = cal_coulomb_failure_stress(
             norm_stress=sigma_n, shear_stress=tau, mu_f=mu_f
         )
     else:
-        mean_stress = (
-            stress_total[:, 0] + stress_total[:, 3] + stress_total[:, 5]
-        ) / 3.0
+        mean_stress = (stress_ned[:, 0] + stress_ned[:, 3] + stress_ned[:, 5]) / 3.0
         cfs = cal_coulomb_failure_stress_poroelasticity(
             norm_stress=sigma_n,
             shear_stress=tau,
