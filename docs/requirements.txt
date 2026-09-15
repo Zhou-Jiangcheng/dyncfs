@@ -1,0 +1,5 @@
+# Documentation only; Python 3.12. Numerical packages are not imported.
+sphinx==8.2.3
+myst-parser==4.0.1
+pydata-sphinx-theme==0.21.0
+sphinx-design==0.7.0

@@ -1,6 +1,16 @@
 # Introduction
 
-This Python package serves as the frontend for computing static and dynamic Coulomb Failure Stress changes in layerd media. The backend relies on programs developed by Rongjiang Wang and modified by Jiangcheng Zhou for calculating synthetic seismograms, specifically EDGRN/EDCMP, [QSEIS_2006_STRESS](https://github.com/Zhou-Jiangcheng/QSEIS_2006_STRESS), and QSSP. The generation and retrieval of Green's function libraries are handled by the [pygrnwang](https://github.com/Zhou-Jiangcheng/pygrnwang) package, while travel-time calculations and geographic coordinate transformations are implemented using [obspy](https://github.com/obspy/obspy).
+This Python package serves as the frontend for computing static and dynamic Coulomb Failure Stress changes in layered media. The current backend dispatch uses EDGRN2/EDCMP2 for static stress, QSEIS2025 for layered dynamic stress, and QSSP2020 for spherical dynamic stress, based on programs developed by Rongjiang Wang and modified by Jiangcheng Zhou. The generation and retrieval of Green's function libraries are handled by the [pygrnwang](https://github.com/Zhou-Jiangcheng/pygrnwang) package, while travel-time calculations and geographic coordinate transformations are implemented using [obspy](https://github.com/obspy/obspy).
+
+# Documentation
+
+The local documentation follows the pygrnwang Sphinx / MyST / PyData layout.
+Start with [the documentation home](docs/index.md), [quickstart](docs/quickstart.md),
+or [中文入门](docs/zh/index.md). Build and preview instructions are in
+[docs/README.md](docs/README.md); generated HTML is at `docs/_build/html/index.html`.
+The [Wenchuan](docs/cases/wenchuan.md) and [Ludian](docs/cases/ludian.md)
+examples give case parameters and results with figures.
+This documentation is prepared locally; no publishing workflow is configured.
 
 # Installation
 
@@ -28,7 +38,7 @@ pip install -e .
 
 # Usage
 
-Fill in all parameters in the .ini file, and prepare the input files as described in `example.ini`, including `source_plane[m].csv` and `obs_plane[n].csv` under the input directory, as well as `model.nd` representing the Earth model.
+Start with the [small executable tutorial](docs/quickstart.md), or adapt `examples/wenchuan/wenchuan.ini` / `examples/ludian/ludian.ini`. Prepare `source_plane[m].csv`, `obs_plane[n].csv` and `model.nd` in the input directory, and set absolute input/output paths. The full schema is in [Input files](docs/input-files.md).
 
 1. Command-line usage
 
@@ -60,12 +70,14 @@ options:
 
 2. Import and use classes and functions in .py files
 
+Replace `case.ini` below with your prepared configuration file.
+
 ```
 from dyncfs.cfs_static import *
 
 if __name__ == "__main__":
     config = CfsConfig()
-    config.read_config("example.ini")
+    config.read_config("case.ini")
     create_static_lib(config)
     compute_static_cfs(config)
 ```
@@ -75,7 +87,7 @@ from dyncfs.cfs_dynamic import *
 
 if __name__ == "__main__":
     config = CfsConfig()
-    config.read_config("example.ini")
+    config.read_config("case.ini")
     create_dynamic_lib(config)
     compute_dynamic_cfs_parallel(config)
 ```
