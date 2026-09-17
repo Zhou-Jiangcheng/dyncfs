@@ -1,17 +1,12 @@
-# Introduction
+# dyncfs
+
+**[Documentation](https://zhou-jiangcheng.github.io/dyncfs/)** · [Quickstart](https://zhou-jiangcheng.github.io/dyncfs/quickstart.html) · [中文入门](https://zhou-jiangcheng.github.io/dyncfs/zh/index.html) · [Examples](https://github.com/Zhou-Jiangcheng/dyncfs/tree/main/examples)
 
 This Python package serves as the frontend for computing static and dynamic Coulomb Failure Stress changes in layered media. The current backend dispatch uses EDGRN2/EDCMP2 for static stress, QSEIS2025 for layered dynamic stress, and QSSP2020 for spherical dynamic stress, based on programs developed by Rongjiang Wang and modified by Jiangcheng Zhou. The generation and retrieval of Green's function libraries are handled by the [pygrnwang](https://github.com/Zhou-Jiangcheng/pygrnwang) package, while travel-time calculations and geographic coordinate transformations are implemented using [obspy](https://github.com/obspy/obspy).
 
-# Documentation
-
-Online documentation: <https://zhou-jiangcheng.github.io/dyncfs/>
-
-Start with [quickstart](https://zhou-jiangcheng.github.io/dyncfs/quickstart.html)
-or [中文入门](https://zhou-jiangcheng.github.io/dyncfs/zh/index.html).
 The [Wenchuan](https://zhou-jiangcheng.github.io/dyncfs/cases/wenchuan.html) and
-[Ludian](https://zhou-jiangcheng.github.io/dyncfs/cases/ludian.html)
-examples give case parameters and results with figures.
-Build and preview instructions are in [docs/README.md](docs/README.md).
+[Ludian](https://zhou-jiangcheng.github.io/dyncfs/cases/ludian.html) examples
+give case parameters and results with figures.
 
 # Installation
 
