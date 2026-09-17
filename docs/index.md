@@ -40,7 +40,7 @@ Understand the INI sections, receiver modes, library coverage and dynamic backen
 
 DynCFS calls [pygrnwang](https://github.com/Zhou-Jiangcheng/pygrnwang) for Green's-function preparation and synthesis. The current source uses **EDGRN2/EDCMP2** for static stress, **QSEIS2025** for layered dynamic calculations and **QSSP2020** for spherical dynamic calculations.
 
-These pages describe the local **3.0.0** source tree. Python support is declared as 3.9 or newer; the documentation build uses Python 3.12. Read the [scientific conventions](conventions.md) before interpreting stress signs or comparing outputs.
+These pages describe the **3.0.0** source tree on the `main` branch. Python support is declared as 3.9 or newer; the documentation build uses Python 3.12. Read the [scientific conventions](conventions.md) before interpreting stress signs or comparing outputs.
 
 ```{toctree}
 :maxdepth: 2

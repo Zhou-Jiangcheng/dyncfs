@@ -1,8 +1,9 @@
-# Local documentation
+# Documentation development
 
 Sphinx + MyST Markdown + PyData theme, following the companion pygrnwang
-documentation layout. This tree is prepared for local use; no publication
-workflow is added.
+documentation layout. The site is published at
+https://zhou-jiangcheng.github.io/dyncfs/ by .github/workflows/docs.yml on
+every push to main.
 
 Use Python 3.12 and install docs/requirements.txt in an isolated environment:
 

@@ -21,6 +21,7 @@ dyncfs = "dyncfs.main:main"
 
 [project.urls]
 Homepage = "https://github.com/Zhou-Jiangcheng/dyncfs"
+Documentation = "https://zhou-jiangcheng.github.io/dyncfs/"
 
 [tool.setuptools]
 package-dir = { "" = "." }

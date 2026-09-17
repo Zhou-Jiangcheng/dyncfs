@@ -36,7 +36,7 @@ dependencies; it does not update the numerical environment.
 ## Build behavior
 
 Sphinx uses MyST, sphinx-design and the PyData theme, matching the companion
-pygrnwang site's visual language. The version is read from local
+pygrnwang site's visual language. The version is read from
 `pyproject.toml`. API references use explicit Python-domain signatures,
 verified through AST against source at every build.
 
@@ -45,7 +45,14 @@ or execute example scripts. Selected tutorial figures are local static
 assets. Dependencies are pinned at the direct-package level in
 `docs/requirements.txt`; this is not a lock of every transitive package.
 
-No deployment workflow, public base URL or hosted site is configured.
+## Publication
+
+`.github/workflows/docs.yml` runs the API check and the strict HTML build on
+pull requests and on pushes to `main` that touch `docs/`, `dyncfs/`,
+`pyproject.toml` or the workflow. Every run uploads the HTML as a reviewable
+artifact. Pushes to `main` also deploy it to GitHub Pages at
+<https://zhou-jiangcheng.github.io/dyncfs/>. The workflow can be started
+manually from the Actions tab.
 
 ## Update a documented API
 

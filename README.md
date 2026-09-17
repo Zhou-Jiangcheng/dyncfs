@@ -4,13 +4,14 @@ This Python package serves as the frontend for computing static and dynamic Coul
 
 # Documentation
 
-The local documentation follows the pygrnwang Sphinx / MyST / PyData layout.
-Start with [the documentation home](docs/index.md), [quickstart](docs/quickstart.md),
-or [中文入门](docs/zh/index.md). Build and preview instructions are in
-[docs/README.md](docs/README.md); generated HTML is at `docs/_build/html/index.html`.
-The [Wenchuan](docs/cases/wenchuan.md) and [Ludian](docs/cases/ludian.md)
+Online documentation: <https://zhou-jiangcheng.github.io/dyncfs/>
+
+Start with [quickstart](https://zhou-jiangcheng.github.io/dyncfs/quickstart.html)
+or [中文入门](https://zhou-jiangcheng.github.io/dyncfs/zh/index.html).
+The [Wenchuan](https://zhou-jiangcheng.github.io/dyncfs/cases/wenchuan.html) and
+[Ludian](https://zhou-jiangcheng.github.io/dyncfs/cases/ludian.html)
 examples give case parameters and results with figures.
-This documentation is prepared locally; no publishing workflow is configured.
+Build and preview instructions are in [docs/README.md](docs/README.md).
 
 # Installation
 
