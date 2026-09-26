@@ -48,6 +48,7 @@ class CfsConfig(object):
         self.obs_lon_range: list[float] = None  # type: ignore
         self.obs_delta_lat: float = None  # type: ignore
         self.obs_delta_lon: float = None  # type: ignore
+        self.receiver_mechanism: list[float] = None  # type: ignore
 
         self.grn_source_depth_range: list[float] = None  # type: ignore
         self.grn_delta_source_depth: float = None  # type: ignore
@@ -244,6 +245,25 @@ class CfsConfig(object):
         )
         self.obs_delta_lat = float(config["fixed_obs_depth"]["obs_delta_lat"])
         self.obs_delta_lon = float(config["fixed_obs_depth"]["obs_delta_lon"])
+        # optional, [strike, dip, rake] (deg) of the receiver fault at fixed depth,
+        # None means the mean focal mechanism of the source faults
+        receiver_mechanism = (
+            config["fixed_obs_depth"]
+            .get("receiver_mechanism", fallback="None")
+            .strip()
+        )
+        if receiver_mechanism in ("", "None"):
+            self.receiver_mechanism = None
+        else:
+            self.receiver_mechanism = ast.literal_eval(receiver_mechanism)
+            if (
+                not isinstance(self.receiver_mechanism, (list, tuple))
+                or len(self.receiver_mechanism) != 3
+            ):
+                raise ValueError(
+                    "receiver_mechanism must be [strike, dip, rake] (deg) or None!"
+                )
+            self.receiver_mechanism = [float(v) for v in self.receiver_mechanism]
 
         # [grn_region]
         self.grn_source_depth_range = ast.literal_eval(

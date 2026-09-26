@@ -518,7 +518,8 @@ def compute_static_cfs_fix_depth(
     :param config:
     :param obs_depth: Observation depth, unit km.
     :param optimal_type: same as config.optimal_type
-    :param receiver_mechanism: [strike, dip, rake] of receiver fault, if None, set as the
+    :param receiver_mechanism: [strike, dip, rake] of receiver fault, default equals to
+                               config.receiver_mechanism, if both None, set as the
                                mean focal mechanism of the source faults.
     :param obs_lat_range: Default equals to config.obs_x_range, unit deg.
     :param obs_lon_range: Default equals to config.obs_y_range, unit deg.
@@ -530,6 +531,8 @@ def compute_static_cfs_fix_depth(
         obs_depth = config.fixed_obs_depth
     if optimal_type is None:
         optimal_type = config.optimal_type
+    if receiver_mechanism is None:
+        receiver_mechanism = config.receiver_mechanism
     if obs_lat_range is None:
         obs_lat_range = config.obs_lat_range
     if obs_lon_range is None:

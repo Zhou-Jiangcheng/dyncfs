@@ -1344,6 +1344,8 @@ def prepare_compute_cfs_fix_depth(
 ):
     if obs_depth is None:
         obs_depth = config.fixed_obs_depth
+    if receiver_mechanism is None:
+        receiver_mechanism = config.receiver_mechanism
     source_array = read_source_array(
         source_inds=config.source_inds,
         path_input=config.path_input,
@@ -1530,7 +1532,8 @@ def compute_dynamic_cfs_fix_depth_sequential(
 
     :param config:
     :param obs_depth: Observation depth, Default equals to config.fixed_obs_depth, unit km.
-    :param receiver_mechanism: [strike, dip, rake] of receiver fault, if None, set as the
+    :param receiver_mechanism: [strike, dip, rake] of receiver fault, default equals to
+                               config.receiver_mechanism, if both None, set as the
                                mean focal mechanism of the source faults.
     :param obs_lat_range: Default equals to config.obs_x_range, unit deg.
     :param obs_lon_range: Default equals to config.obs_y_range, unit deg.
@@ -1539,6 +1542,8 @@ def compute_dynamic_cfs_fix_depth_sequential(
     """
     if obs_depth is None:
         obs_depth = config.fixed_obs_depth
+    if receiver_mechanism is None:
+        receiver_mechanism = config.receiver_mechanism
 
     if obs_lat_range is None:
         obs_lat_range = config.obs_lat_range
