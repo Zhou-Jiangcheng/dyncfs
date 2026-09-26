@@ -45,8 +45,9 @@ if __name__ == "__main__":
 
 This creates nine receivers with longitude varying fastest.
 Depth is in km, angles and geographic spacing in degrees.
-Omitted options use the configuration. If a mechanism is omitted,
-modes 0/1 obtain one from the summed source moment tensor.
+Omitted options use the configuration, including `receiver_mechanism`
+from `[fixed_obs_depth]`. If neither gives a mechanism, modes 0/1 obtain
+one from the summed source moment tensor.
 
 The direct grid function accepts an explicit depth independently of
 `fixed_obs_depth_enabled()`. The CLI and `run_all_static` apply the

@@ -44,15 +44,21 @@ All `[fixed_obs_depth]` fields are parsed even if the grid is disabled.
 | `fixed_obs_depth` | Depth in km; CLI and complete workflows enable the grid only for values >0 |
 | `obs_lat_range`, `obs_lon_range` | Closed `[minimum, maximum]` ranges, degrees |
 | `obs_delta_lat`, `obs_delta_lon` | Positive target increments, degrees |
+| `receiver_mechanism` | Optional `[strike, dip, rake]` in degrees, or `None` (default) |
 
 Grid counts are computed by `cal_grid_num`, then coordinates use
 `linspace` including both endpoints. Choose ranges divisible by the
 increments. Longitude varies fastest; see [output layouts](guides/outputs.md).
 Direct low-level grid functions do not enforce the CLI's positive-depth gate.
 
-If no explicit receiver mechanism is passed, modes 0/1 derive one from the
-moment-weighted sum of the selected source mechanisms. The CLI has no
-receiver-mechanism override; use the Python API for an explicit choice.
+`receiver_mechanism` sets the receiver fault for
+`--compute-static-cfs-fix-depth`, `--compute-dynamic-cfs-fix-depth` and the
+fixed-depth step of the complete workflows. Mode 0 uses all three angles,
+mode 1 uses strike and dip and optimizes rake, and mode 2 ignores it. When
+it is `None` or absent, modes 0/1 derive a mechanism from the
+moment-weighted sum of the selected source mechanisms. A
+`receiver_mechanism` argument passed to a Python fixed-depth function
+takes precedence over the INI value.
 
 ## Library coverage
 

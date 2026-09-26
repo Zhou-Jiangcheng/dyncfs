@@ -47,9 +47,10 @@ Both accept an explicit depth and receiver mechanism.
 The sequential function additionally accepts geographic range/spacing
 overrides. For the parallel function, put those settings in the configuration.
 
-The default receiver mechanism for modes 0/1 comes from the summed source
-moment tensor. Choose it explicitly through Python when that is not the
-intended receiver.
+For modes 0/1, the receiver mechanism comes from the function argument,
+then `receiver_mechanism` in `[fixed_obs_depth]`, and otherwise from the
+summed source moment tensor. Set it in the INI or pass it through Python
+when the source average is not the intended receiver.
 
 ## Static zero-frequency correction
 

@@ -11,7 +11,7 @@ Compute static NED tensors and projected stresses at selected observation faults
 ```
 
 ```{py:function} dyncfs.cfs_static.compute_static_cfs_fix_depth(config, obs_depth=None, optimal_type=None, receiver_mechanism=None, obs_lat_range=None, obs_lon_range=None, obs_delta_lat=None, obs_delta_lon=None)
-`obs_depth` is km; `optimal_type` is 0/1/2; `receiver_mechanism` is `[strike,dip,rake]` in degrees. Geographic ranges are closed two-item lists in degrees, and increments are positive degrees. None uses the matching config attribute, except a missing receiver mechanism is derived from the moment-weighted source tensor in modes 0/1. Generates longitude-fast grid results. This direct call does not enforce the CLI's positive-depth gate.
+`obs_depth` is km; `optimal_type` is 0/1/2; `receiver_mechanism` is `[strike,dip,rake]` in degrees. Geographic ranges are closed two-item lists in degrees, and increments are positive degrees. None uses the matching config attribute; if `config.receiver_mechanism` is also None, modes 0/1 derive the mechanism from the moment-weighted source tensor. Generates longitude-fast grid results. This direct call does not enforce the CLI's positive-depth gate.
 ```
 
 ```{py:function} dyncfs.cfs_static.run_all_static(config)

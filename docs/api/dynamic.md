@@ -39,7 +39,7 @@ Prepare source/job files, run spawned workers and assemble plane CSVs. The calli
 ```
 
 ```{py:function} dyncfs.cfs_dynamic.compute_dynamic_cfs_fix_depth_sequential(config, obs_depth=None, receiver_mechanism=None, obs_lat_range=None, obs_lon_range=None, obs_delta_lat=None, obs_delta_lon=None)
-`obs_depth` is km. `receiver_mechanism` is `[strike,dip,rake]` in degrees; geographic ranges and increments are degrees. None uses configuration fields, except receiver mechanism is inferred from the source tensor in modes 0/1. Writes a longitude-fast grid.
+`obs_depth` is km. `receiver_mechanism` is `[strike,dip,rake]` in degrees; geographic ranges and increments are degrees. None uses configuration fields, including `config.receiver_mechanism`; if that is also None, modes 0/1 infer the mechanism from the source tensor. Writes a longitude-fast grid.
 ```
 
 ```{py:function} dyncfs.cfs_dynamic.compute_dynamic_cfs_fix_depth_parallel(config, obs_depth=None, receiver_mechanism=None)
